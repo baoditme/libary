@@ -315,8 +315,8 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     bg.BackgroundTransparency = 1
     bg.BorderSizePixel = 0
     bg.Parent = gui
-    TweenService:Create(bg, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 0.4,
+    TweenService:Create(bg, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0.5,
     }):Play()
 
     -- ========= SNOW =========
@@ -373,21 +373,29 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     introText.ZIndex = 51
     introText.Parent = introHolder
 
-    local glow1 = introText:Clone()
-    glow1.Name = "Glow1"
-    glow1.TextColor3 = P.ACCENT
-    glow1.TextSize = 72
-    glow1.TextTransparency = 1
-    glow1.ZIndex = 50
-    glow1.Parent = introHolder
+    local glows = {}
+    local glowDefs = {
+        { size = 68,  trans = 0.50, color = P.ACCENT,                                              z = 50 },
+        { size = 82,  trans = 0.68, color = mixColor(P.ACCENT, Color3.fromRGB(80, 200, 255), 0.5), z = 49 },
+        { size = 100, trans = 0.82, color = mixColor(P.ACCENT, Color3.fromRGB(180, 120, 255), 0.4), z = 48 },
+        { size = 124, trans = 0.91, color = Color3.fromRGB(220, 220, 255),                          z = 47 },
+        { size = 152, trans = 0.96, color = Color3.fromRGB(255, 255, 255),                          z = 46 },
+    }
+    for i, def in ipairs(glowDefs) do
+        local g = introText:Clone()
+        g.Name = "Glow" .. i
+        g.TextColor3 = def.color
+        g.TextSize = def.size
+        g.TextTransparency = 1
+        g.ZIndex = def.z
+        g.Parent = introHolder
+        table.insert(glows, { obj = g, baseTrans = def.trans, idx = i })
+    end
 
-    local glow2 = introText:Clone()
-    glow2.Name = "Glow2"
-    glow2.TextColor3 = mixColor(P.ACCENT, Color3.fromRGB(120, 220, 255), 0.5)
-    glow2.TextSize = 92
-    glow2.TextTransparency = 1
-    glow2.ZIndex = 49
-    glow2.Parent = introHolder
+    local introStroke = Instance.new("UIStroke", introText)
+    introStroke.Color = P.ACCENT
+    introStroke.Thickness = 2
+    introStroke.Transparency = 1
 
     local textGrad = Instance.new("UIGradient", introText)
     textGrad.Color = ColorSequence.new({
@@ -400,7 +408,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     task.spawn(function()
         local a = 45
         while introText.Parent do
-            a = (a + 1) % 360
+            a = (a + 2) % 360
             textGrad.Rotation = a
             RunService.RenderStepped:Wait()
         end
@@ -408,10 +416,22 @@ local function _showKeyPrompt(ks, valid, onSuccess)
 
     task.spawn(function()
         local t = 0
-        while glow1.Parent do
-            t = (t + 0.005) % 1
-            glow1.TextColor3 = Color3.fromHSV(t, 0.7, 1)
-            glow2.TextColor3 = Color3.fromHSV((t + 0.5) % 1, 0.8, 1)
+        local jitter = 0
+        while introText.Parent do
+            t = (t + 0.008) % 1
+            jitter = jitter + 0.25
+            for _, g in ipairs(glows) do
+                local hue = (t + (g.idx - 1) * 0.13) % 1
+                g.obj.TextColor3 = Color3.fromHSV(hue, 0.55, 1)
+            end
+            introStroke.Transparency = 0.15 + math.sin(tick() * 8) * 0.25
+            introStroke.Color = Color3.fromHSV(t, 0.7, 1)
+            local sx = math.sin(jitter * 5) * 1.5
+            local sy = math.cos(jitter * 4.2) * 1.5
+            introText.Position = UDim2.fromOffset(sx, sy)
+            for _, g in ipairs(glows) do
+                g.obj.Position = UDim2.fromOffset(sx * 0.6, sy * 0.6)
+            end
             RunService.RenderStepped:Wait()
         end
     end)
@@ -419,7 +439,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     local introScale = Instance.new("UIScale", introHolder)
     introScale.Scale = 0.4
 
-    -- ========= BOX =========
+    -- ========= BOX (starts off-screen) =========
     local box = Instance.new("Frame")
     box.Size = UDim2.fromOffset(440, 0)
     box.AutomaticSize = Enum.AutomaticSize.Y
@@ -431,9 +451,9 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     box.Parent = bg
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 14)
 
-    local bgGrad2 = Instance.new("UIGradient", box)
-    bgGrad2.Rotation = 90
-    bgGrad2.Color = ColorSequence.new({
+    local bgGrad = Instance.new("UIGradient", box)
+    bgGrad.Rotation = 90
+    bgGrad.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 24, 30)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 16, 20)),
     })
@@ -441,6 +461,9 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     local boxStroke = Instance.new("UIStroke", box)
     boxStroke.Color = Color3.fromRGB(42, 42, 54)
     boxStroke.Thickness = 1
+
+    local scale = Instance.new("UIScale", box)
+    scale.Scale = 1
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.fromOffset(24, 24)
@@ -501,16 +524,16 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     accentBar.Parent = titleRow
     Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
 
-    local title2 = Instance.new("TextLabel")
-    title2.Size = UDim2.new(1, -14, 1, 0)
-    title2.Position = UDim2.new(0, 14, 0, 0)
-    title2.BackgroundTransparency = 1
-    title2.Text = ks.Title or "Key System"
-    title2.TextColor3 = P.TEXT
-    title2.Font = Enum.Font.GothamBold
-    title2.TextSize = 18
-    title2.TextXAlignment = Enum.TextXAlignment.Left
-    title2.Parent = titleRow
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -14, 1, 0)
+    title.Position = UDim2.new(0, 14, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = ks.Title or "Key System"
+    title.TextColor3 = P.TEXT
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = titleRow
 
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, 0, 0, 0)
@@ -721,11 +744,13 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     end
 
     local function doClose()
-        TweenService:Create(bg, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
-        TweenService:Create(box, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-            Position = UDim2.fromScale(0.5, -0.4),
+        TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Scale = 0.92,
         }):Play()
-        task.wait(0.3)
+        TweenService:Create(bg, TweenInfo.new(0.2), {
+            BackgroundTransparency = 1,
+        }):Play()
+        task.wait(0.22)
         gui:Destroy()
     end
 
@@ -744,8 +769,14 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         local entered = inputBox.Text
         if _checkKey(entered, valid) then
             if ks.SaveKey ~= false then _saveKey(ks.FileName, entered) end
-            doClose()
-            task.wait(0.3)
+            TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+                Scale = 0.92,
+            }):Play()
+            TweenService:Create(bg, TweenInfo.new(0.2), {
+                BackgroundTransparency = 1,
+            }):Play()
+            task.wait(0.22)
+            gui:Destroy()
             onSuccess()
         else
             status.Text = "Invalid key, try again."
@@ -761,47 +792,47 @@ local function _showKeyPrompt(ks, valid, onSuccess)
 
     -- ========= INTRO SEQUENCE =========
     task.spawn(function()
-        task.wait(0.4)
+        task.wait(0.3)
 
         TweenService:Create(introText, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
-        TweenService:Create(glow1, TweenInfo.new(0.3), { TextTransparency = 0.45 }):Play()
-        TweenService:Create(glow2, TweenInfo.new(0.3), { TextTransparency = 0.7 }):Play()
+        TweenService:Create(introStroke, TweenInfo.new(0.3), { Transparency = 0.15 }):Play()
+        for _, g in ipairs(glows) do
+            TweenService:Create(g.obj, TweenInfo.new(0.3), { TextTransparency = g.baseTrans }):Play()
+        end
 
-        TweenService:Create(introScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        TweenService:Create(introScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Scale = 1.2,
-        }):Play()
-        task.wait(0.8)
-
-        TweenService:Create(introHolder, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut), {
-            Position = UDim2.fromScale(0.5, 0.65),
         }):Play()
         task.wait(0.6)
 
-        local rotDur = 1.0
+        TweenService:Create(introHolder, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut), {
+            Position = UDim2.fromScale(0.5, 0.65),
+        }):Play()
+        task.wait(0.55)
+
+        local rotDur = 0.9
         local t0 = tick()
         local rotConn
         rotConn = RunService.RenderStepped:Connect(function()
             local a = math.min((tick() - t0) / rotDur, 1) * 360
             introText.Rotation = a
-            glow1.Rotation = a
-            glow2.Rotation = a
+            for _, g in ipairs(glows) do g.obj.Rotation = a end
             if a >= 360 then
                 if rotConn then rotConn:Disconnect() end
                 introText.Rotation = 0
-                glow1.Rotation = 0
-                glow2.Rotation = 0
+                for _, g in ipairs(glows) do g.obj.Rotation = 0 end
             end
         end)
         task.wait(rotDur + 0.05)
 
-        TweenService:Create(introScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Scale = 2.0,
+        TweenService:Create(introScale, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Scale = 1.6,
+        }):Play()
+        task.wait(0.28)
+        TweenService:Create(introScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Scale = 0.85,
         }):Play()
         task.wait(0.3)
-        TweenService:Create(introScale, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-            Scale = 0.9,
-        }):Play()
-        task.wait(0.35)
 
         local cX = bg.AbsoluteSize.X * 0.5
         local cY = bg.AbsoluteSize.Y * 0.65
@@ -826,19 +857,21 @@ local function _showKeyPrompt(ks, valid, onSuccess)
             }):Play()
             task.delay(0.85, function() if flake and flake.Parent then flake:Destroy() end end)
         end
-        task.wait(0.35)
+        task.wait(0.55)
 
-        TweenService:Create(introText, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
-        TweenService:Create(glow1, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
-        TweenService:Create(glow2, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
-        task.wait(0.45)
+        TweenService:Create(introText, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
+        TweenService:Create(introStroke, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+        for _, g in ipairs(glows) do
+            TweenService:Create(g.obj, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
+        end
+        task.wait(0.4)
         introHolder:Destroy()
 
         box.Visible = true
-        TweenService:Create(box, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        TweenService:Create(box, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Position = UDim2.fromScale(0.5, 0.5),
         }):Play()
-        task.wait(0.6)
+        task.wait(0.55)
         pcall(function() inputBox:CaptureFocus() end)
     end)
 end
