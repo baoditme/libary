@@ -373,7 +373,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     introText.ZIndex = 51
     introText.Parent = introHolder
 
-    local glows = {}
+        local glows = {}
     local glowDefs = {
         { size = 68,  trans = 0.50, color = P.ACCENT,                                              z = 50 },
         { size = 82,  trans = 0.68, color = mixColor(P.ACCENT, Color3.fromRGB(80, 200, 255), 0.5), z = 49 },
@@ -794,11 +794,13 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     task.spawn(function()
         task.wait(0.3)
 
-        TweenService:Create(introText, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
-        TweenService:Create(introStroke, TweenInfo.new(0.3), { Transparency = 0.15 }):Play()
-        for _, g in ipairs(glows) do
-            TweenService:Create(g.obj, TweenInfo.new(0.3), { TextTransparency = g.baseTrans }):Play()
-        end
+                TweenService:Create(introText, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+        TweenService:Create(introStroke, TweenInfo.new(0.3), { Transparency = 0.5 }):Play()
+        TweenService:Create(chromaR, TweenInfo.new(0.3), { TextTransparency = 0.94 }):Play()
+        TweenService:Create(chromaC, TweenInfo.new(0.3), { TextTransparency = 0.94 }):Play()
+        TweenService:Create(glowInner, TweenInfo.new(0.3), { TextTransparency = 0.85 }):Play()
+        TweenService:Create(glowOuter, TweenInfo.new(0.3), { TextTransparency = 0.93 }):Play()
+        TweenService:Create(shineLabel, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
 
         TweenService:Create(introScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Scale = 1.2,
@@ -810,21 +812,28 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         }):Play()
         task.wait(0.55)
 
-        local rotDur = 0.9
+                local rotDur = 0.9
         local t0 = tick()
         local rotConn
         rotConn = RunService.RenderStepped:Connect(function()
             local a = math.min((tick() - t0) / rotDur, 1) * 360
             introText.Rotation = a
-            for _, g in ipairs(glows) do g.obj.Rotation = a end
+            chromaR.Rotation = a
+            chromaC.Rotation = a
+            glowInner.Rotation = a
+            glowOuter.Rotation = a
+            shineLabel.Rotation = a
             if a >= 360 then
                 if rotConn then rotConn:Disconnect() end
                 introText.Rotation = 0
-                for _, g in ipairs(glows) do g.obj.Rotation = 0 end
+                chromaR.Rotation = 0
+                chromaC.Rotation = 0
+                glowInner.Rotation = 0
+                glowOuter.Rotation = 0
+                shineLabel.Rotation = 0
             end
         end)
         task.wait(rotDur + 0.05)
-
         TweenService:Create(introScale, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             Scale = 1.6,
         }):Play()
@@ -861,9 +870,11 @@ local function _showKeyPrompt(ks, valid, onSuccess)
 
         TweenService:Create(introText, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
         TweenService:Create(introStroke, TweenInfo.new(0.35), { Transparency = 1 }):Play()
-        for _, g in ipairs(glows) do
-            TweenService:Create(g.obj, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
-        end
+        TweenService:Create(chromaR, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
+        TweenService:Create(chromaC, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
+        TweenService:Create(glowInner, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
+        TweenService:Create(glowOuter, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
+        TweenService:Create(shineLabel, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
         task.wait(0.4)
         introHolder:Destroy()
 
