@@ -1,28 +1,7 @@
 -- ============================================================
--- RYZE UI LIBRARY v1.2
--- Theme custom · window/tab/button animations · background FX
--- Key System with Get Key + link copy (Rayfield-style)
---
--- Usage:
---   local lib = loadstring(game:HttpGet("URL"))()
---   local win = lib:CreateWindow({
---       Title = "MY HUB",
---       Accent = Color3.fromRGB(115, 95, 245),   -- shortcut
---       Theme  = { BG=..., PANEL=..., ... },     -- full override (optional)
---       BgAnimation = true,                      -- default true
---       KeySystem = true,
---       KeySettings = {
---           Title="MY HUB", Subtitle="Key System",
---           Note="Join discord.gg/xxx",
---           FileName="MY_HUB_KEY", SaveKey=true, GrabKeyFromSite=false,
---           Key={"abc123"},
---           Links = {
---               { Name="Discord", Url="https://discord.gg/xxx" },
---               { Name="YouTube", Url="https://youtube.com/xxx" },
---           },
---       },
---       OnKeySuccess = function(window) end,
---   })
+-- RYZE UI LIBRARY v1.3
+-- Dark slate + accent + animated bg + typewriter title
+-- Key prompt: fall + bounce + burst + loading + box slide
 -- ============================================================
 
 local TweenService     = game:GetService("TweenService")
@@ -109,7 +88,7 @@ local N_HEIGHT, N_GAP = 68, 8
 
 local Lib = {}
 Lib.__index = Lib
-Lib.Version = "1.2"
+Lib.Version = "1.3"
 
 function Lib:Notify(cfg)
     cfg = cfg or {}
@@ -225,7 +204,7 @@ local function copyToClipboard(text)
 end
 
 -- ============================================================
--- KEY SYSTEM
+-- KEY SYSTEM HELPERS
 -- ============================================================
 local function _extractKeyList(keyField)
     if type(keyField) == "string" then return { keyField } end
@@ -301,6 +280,9 @@ local function _saveKey(fileName, key)
     if writefile then pcall(writefile, path, tostring(key)) end
 end
 
+-- ============================================================
+-- KEY PROMPT (intro + loading + box slide)
+-- ============================================================
 local function _showKeyPrompt(ks, valid, onSuccess)
     local gui = Instance.new("ScreenGui")
     gui.Name = "RYZE_UI_Key"
@@ -351,7 +333,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         end
     end)
 
-    -- INTRO TEXT + NITRO (starts OFF-SCREEN TOP)
+    -- INTRO TEXT (starts off-screen top)
     local introHolder = Instance.new("Frame")
     introHolder.Size = UDim2.fromScale(1, 1)
     introHolder.Position = UDim2.fromScale(0.5, -0.35)
@@ -378,7 +360,6 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     introStroke.Thickness = 1.5
     introStroke.Transparency = 1
 
-    -- Chromatic aberration 1.5px
     local chromaR = introText:Clone()
     chromaR.TextColor3 = Color3.fromRGB(255, 70, 90)
     chromaR.TextTransparency = 1
@@ -395,7 +376,6 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     chromaC.ZIndex = 50
     chromaC.Parent = introHolder
 
-    -- Soft glow layers
     local glowInner = introText:Clone()
     glowInner.TextColor3 = P.ACCENT
     glowInner.TextSize = 68
@@ -412,7 +392,6 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     glowOuter.ZIndex = 48
     glowOuter.Parent = introHolder
 
-    -- Shine sweep band
     local shineLabel = introText:Clone()
     shineLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     shineLabel.TextTransparency = 1
@@ -479,6 +458,9 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     local boxStroke = Instance.new("UIStroke", box)
     boxStroke.Color = Color3.fromRGB(42, 42, 54)
     boxStroke.Thickness = 1
+
+    local scale = Instance.new("UIScale", box)
+    scale.Scale = 1
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.fromOffset(24, 24)
@@ -797,11 +779,10 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     inputBox:GetPropertyChangedSignal("Text"):Connect(function() status.Text = "" end)
     closeBtn.MouseButton1Click:Connect(doClose)
 
-    -- INTRO SEQUENCE: fall → bounce x3 → shrink → burst → box slides
+    -- INTRO SEQUENCE
     task.spawn(function()
         task.wait(0.1)
 
-        -- Fade in while above screen
         TweenService:Create(introText, TweenInfo.new(0.15), { TextTransparency = 0 }):Play()
         TweenService:Create(introStroke, TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
         TweenService:Create(chromaR, TweenInfo.new(0.15), { TextTransparency = 0.94 }):Play()
@@ -811,13 +792,13 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         TweenService:Create(shineLabel, TweenInfo.new(0.15), { TextTransparency = 0 }):Play()
         task.wait(0.15)
 
-        -- Fall to center (accelerating, like gravity)
+        -- Fall
         TweenService:Create(introHolder, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Position = UDim2.fromScale(0.5, 0.5),
         }):Play()
         task.wait(0.55)
 
-        -- Bounce 1 (big)
+        -- Bounce 1
         TweenService:Create(introHolder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Position = UDim2.fromScale(0.5, 0.40),
         }):Play()
@@ -827,7 +808,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         }):Play()
         task.wait(0.14)
 
-        -- Bounce 2 (medium)
+        -- Bounce 2
         TweenService:Create(introHolder, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Position = UDim2.fromScale(0.5, 0.455),
         }):Play()
@@ -837,7 +818,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         }):Play()
         task.wait(0.09)
 
-        -- Bounce 3 (small)
+        -- Bounce 3
         TweenService:Create(introHolder, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Position = UDim2.fromScale(0.5, 0.478),
         }):Play()
@@ -847,10 +828,9 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         }):Play()
         task.wait(0.06)
 
-        -- Settle hold
         task.wait(0.2)
 
-        -- BURST PARTICLES (many, from screen center)
+        -- Burst
         local cX = bg.AbsoluteSize.X * 0.5
         local cY = bg.AbsoluteSize.Y * 0.5
         local N = 84
@@ -880,7 +860,6 @@ local function _showKeyPrompt(ks, valid, onSuccess)
             task.delay(dur + 0.05, function() if flake and flake.Parent then flake:Destroy() end end)
         end
 
-        -- Shrink + fade text simultaneously
         TweenService:Create(introScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
             Scale = 0.15,
         }):Play()
@@ -894,7 +873,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         task.wait(0.4)
         introHolder:Destroy()
 
-        -- ========== LOADING SCREEN ==========
+        -- LOADING
         local loadHolder = Instance.new("Frame")
         loadHolder.Size = UDim2.fromOffset(340, 0)
         loadHolder.AutomaticSize = Enum.AutomaticSize.Y
@@ -998,7 +977,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         task.wait(0.32)
         loadHolder:Destroy()
 
-        -- Box slides down from top
+        -- Box slides down
         box.Visible = true
         TweenService:Create(box, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Position = UDim2.fromScale(0.5, 0.5),
@@ -1007,6 +986,7 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         pcall(function() inputBox:CaptureFocus() end)
     end)
 end
+
 -- ============================================================
 -- BUILDERS
 -- ============================================================
@@ -1763,7 +1743,6 @@ function Lib:_CreateWindowCore(cfg)
     mainStroke.Thickness = 1
     mainStroke.Transparency = 0.93
 
-    -- Background animation layer
     if bgAnim then
         local bgLayer = Instance.new("Frame")
         bgLayer.Size = UDim2.fromScale(1, 1)
@@ -1826,7 +1805,6 @@ function Lib:_CreateWindowCore(cfg)
         end)
     end
 
-    -- Title bar
     local titleBar = Instance.new("Frame")
     titleBar.Size = UDim2.new(1, 0, 0, 42)
     titleBar.BackgroundColor3 = P.PANEL
@@ -1940,38 +1918,6 @@ function Lib:_CreateWindowCore(cfg)
         end
     end)
 
-    local function makeCtrl(text, xOff, cb, danger)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 26, 0, 26)
-        btn.Position = UDim2.new(1, xOff, 0, 8)
-        btn.BackgroundColor3 = danger and Color3.fromRGB(160, 40, 50) or P.ELEM
-        btn.Text = text
-        btn.TextColor3 = P.TEXT
-        btn.Font = Enum.Font.GothamMedium
-        btn.TextSize = 12
-        btn.AutoButtonColor = false
-        btn.ZIndex = 4
-        btn.Parent = titleBar
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-        local s = Instance.new("UIStroke", btn)
-        s.Color = Color3.fromRGB(255, 255, 255)
-        s.Thickness = 1
-        s.Transparency = 0.94
-        btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.15), {
-                BackgroundColor3 = danger and Color3.fromRGB(190, 50, 60) or P.HOVER,
-            }):Play()
-        end)
-        btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.15), {
-                BackgroundColor3 = danger and Color3.fromRGB(160, 40, 50) or P.ELEM,
-            }):Play()
-        end)
-        btn.MouseButton1Click:Connect(cb)
-        return btn
-    end
-
-    -- Window scale for open/close animation
     local winScale = Instance.new("UIScale", main)
     winScale.Scale = 0.85
     main.BackgroundTransparency = 0.3
@@ -1984,22 +1930,88 @@ function Lib:_CreateWindowCore(cfg)
         }):Play()
     end)
 
-    makeCtrl("X", -34, function()
-        TweenService:Create(winScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-            Scale = 0.85,
-        }):Play()
-        TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-            BackgroundTransparency = 1,
-        }):Play()
-        task.wait(0.3)
-        gui:Destroy()
-    end, true)
-
     local isMin = false
     local sidebar, content, searchBar
     local origSize = UDim2.new(win.Size.X.Scale, win.Size.X.Offset, win.Size.Y.Scale, win.Size.Y.Offset)
 
-    makeCtrl("-", -66, function()
+    -- Grouped ctrl [- | X]
+    local ctrlGroup = Instance.new("Frame")
+    ctrlGroup.Size = UDim2.fromOffset(58, 26)
+    ctrlGroup.Position = UDim2.new(1, -66, 0, 8)
+    ctrlGroup.BackgroundColor3 = P.ELEM
+    ctrlGroup.BorderSizePixel = 0
+    ctrlGroup.ClipsDescendants = true
+    ctrlGroup.ZIndex = 4
+    ctrlGroup.Parent = titleBar
+    Instance.new("UICorner", ctrlGroup).CornerRadius = UDim.new(0, 8)
+    local ctrlStroke = Instance.new("UIStroke", ctrlGroup)
+    ctrlStroke.Color = Color3.fromRGB(255, 255, 255)
+    ctrlStroke.Thickness = 1
+    ctrlStroke.Transparency = 0.94
+
+    local btnMin = Instance.new("TextButton")
+    btnMin.Size = UDim2.new(0, 28, 1, 0)
+    btnMin.Position = UDim2.new(0, 0, 0, 0)
+    btnMin.BackgroundColor3 = P.HOVER
+    btnMin.BackgroundTransparency = 1
+    btnMin.Text = "-"
+    btnMin.TextColor3 = P.TEXT
+    btnMin.Font = Enum.Font.GothamMedium
+    btnMin.TextSize = 14
+    btnMin.AutoButtonColor = false
+    btnMin.ZIndex = 5
+    btnMin.Parent = ctrlGroup
+    Instance.new("UICorner", btnMin).CornerRadius = UDim.new(0, 8)
+
+    local btnClose = Instance.new("TextButton")
+    btnClose.Size = UDim2.new(0, 28, 1, 0)
+    btnClose.Position = UDim2.new(1, -28, 0, 0)
+    btnClose.BackgroundColor3 = Color3.fromRGB(160, 40, 50)
+    btnClose.BackgroundTransparency = 1
+    btnClose.Text = "X"
+    btnClose.TextColor3 = P.TEXT
+    btnClose.Font = Enum.Font.GothamMedium
+    btnClose.TextSize = 12
+    btnClose.AutoButtonColor = false
+    btnClose.ZIndex = 5
+    btnClose.Parent = ctrlGroup
+    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 8)
+
+    local ctrlDivider = Instance.new("Frame")
+    ctrlDivider.Size = UDim2.new(0, 1, 1, -10)
+    ctrlDivider.Position = UDim2.new(0.5, 0, 0, 5)
+    ctrlDivider.BackgroundColor3 = Color3.fromRGB(60, 60, 72)
+    ctrlDivider.BorderSizePixel = 0
+    ctrlDivider.ZIndex = 6
+    ctrlDivider.Parent = ctrlGroup
+
+    btnMin.MouseEnter:Connect(function()
+        TweenService:Create(btnMin, TweenInfo.new(0.12), {
+            BackgroundTransparency = 0,
+            TextColor3 = Color3.new(1, 1, 1),
+        }):Play()
+    end)
+    btnMin.MouseLeave:Connect(function()
+        TweenService:Create(btnMin, TweenInfo.new(0.12), {
+            BackgroundTransparency = 1,
+            TextColor3 = P.TEXT,
+        }):Play()
+    end)
+
+    btnClose.MouseEnter:Connect(function()
+        TweenService:Create(btnClose, TweenInfo.new(0.12), {
+            BackgroundTransparency = 0,
+            TextColor3 = Color3.new(1, 1, 1),
+        }):Play()
+    end)
+    btnClose.MouseLeave:Connect(function()
+        TweenService:Create(btnClose, TweenInfo.new(0.12), {
+            BackgroundTransparency = 1,
+            TextColor3 = P.TEXT,
+        }):Play()
+    end)
+
+    btnMin.MouseButton1Click:Connect(function()
         isMin = not isMin
         if sidebar then sidebar.Visible = not isMin end
         if content then content.Visible = not isMin end
@@ -2013,7 +2025,18 @@ function Lib:_CreateWindowCore(cfg)
         TweenService:Create(main, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             Size = targetSize,
         }):Play()
-    end, false)
+    end)
+
+    btnClose.MouseButton1Click:Connect(function()
+        TweenService:Create(winScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Scale = 0.85,
+        }):Play()
+        TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            BackgroundTransparency = 1,
+        }):Play()
+        task.wait(0.3)
+        gui:Destroy()
+    end)
 
     sidebar = Instance.new("ScrollingFrame")
     sidebar.Size = UDim2.new(0, 150, 1, -50)
@@ -2029,7 +2052,7 @@ function Lib:_CreateWindowCore(cfg)
     sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
     sidebar.ZIndex = 3
     sidebar.Parent = main
-    Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 10)
 
     local sidebarLayout = Instance.new("UIListLayout", sidebar)
     sidebarLayout.Padding = UDim.new(0, 4)
@@ -2048,7 +2071,7 @@ function Lib:_CreateWindowCore(cfg)
     content.BorderSizePixel = 0
     content.ZIndex = 3
     content.Parent = main
-    Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", content).CornerRadius = UDim.new(0, 10)
 
     searchBar = Instance.new("Frame")
     searchBar.Size = UDim2.new(1, -16, 0, 32)
@@ -2057,7 +2080,7 @@ function Lib:_CreateWindowCore(cfg)
     searchBar.BorderSizePixel = 0
     searchBar.ZIndex = 4
     searchBar.Parent = content
-    Instance.new("UICorner", searchBar).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", searchBar).CornerRadius = UDim.new(0, 8)
 
     local sBox = Instance.new("TextBox")
     sBox.Size = UDim2.new(1, -16, 1, 0)
