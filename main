@@ -315,23 +315,125 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     bg.BackgroundTransparency = 1
     bg.BorderSizePixel = 0
     bg.Parent = gui
-    TweenService:Create(bg, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 0.5,
+    TweenService:Create(bg, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0.4,
     }):Play()
 
+    -- ========= SNOW =========
+    local snowLayer = Instance.new("Frame")
+    snowLayer.Size = UDim2.fromScale(1, 1)
+    snowLayer.BackgroundTransparency = 1
+    snowLayer.BorderSizePixel = 0
+    snowLayer.ClipsDescendants = true
+    snowLayer.ZIndex = 1
+    snowLayer.Parent = bg
+
+    task.spawn(function()
+        while gui.Parent do
+            local sz = math.random(2, 4)
+            local flake = Instance.new("Frame")
+            flake.Size = UDim2.fromOffset(sz, sz)
+            flake.Position = UDim2.new(math.random(), 0, -0.05, 0)
+            flake.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            flake.BackgroundTransparency = math.random(30, 70) / 100
+            flake.BorderSizePixel = 0
+            flake.ZIndex = 1
+            flake.Parent = snowLayer
+            Instance.new("UICorner", flake).CornerRadius = UDim.new(1, 0)
+            local dur = math.random(40, 80) / 10
+            local drift = (math.random() - 0.5) * 0.15
+            TweenService:Create(flake, TweenInfo.new(dur, Enum.EasingStyle.Linear), {
+                Position = UDim2.new(flake.Position.X.Scale + drift, 0, 1.05, 0),
+                Rotation = math.random(-180, 180),
+            }):Play()
+            task.delay(dur, function() if flake and flake.Parent then flake:Destroy() end end)
+            task.wait(math.random(8, 20) / 100)
+        end
+    end)
+
+    -- ========= INTRO TEXT + NITRO =========
+    local introHolder = Instance.new("Frame")
+    introHolder.Size = UDim2.fromScale(1, 1)
+    introHolder.Position = UDim2.fromScale(0.5, 0.5)
+    introHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+    introHolder.BackgroundTransparency = 1
+    introHolder.ZIndex = 50
+    introHolder.Parent = bg
+
+    local introText = Instance.new("TextLabel")
+    introText.Size = UDim2.fromScale(1, 1)
+    introText.BackgroundTransparency = 1
+    introText.Text = ks.Title or "RYZE HUB"
+    introText.TextColor3 = Color3.new(1, 1, 1)
+    introText.Font = Enum.Font.GothamBold
+    introText.TextSize = 56
+    introText.TextXAlignment = Enum.TextXAlignment.Center
+    introText.TextYAlignment = Enum.TextYAlignment.Center
+    introText.TextTransparency = 1
+    introText.ZIndex = 51
+    introText.Parent = introHolder
+
+    local glow1 = introText:Clone()
+    glow1.Name = "Glow1"
+    glow1.TextColor3 = P.ACCENT
+    glow1.TextSize = 72
+    glow1.TextTransparency = 1
+    glow1.ZIndex = 50
+    glow1.Parent = introHolder
+
+    local glow2 = introText:Clone()
+    glow2.Name = "Glow2"
+    glow2.TextColor3 = mixColor(P.ACCENT, Color3.fromRGB(120, 220, 255), 0.5)
+    glow2.TextSize = 92
+    glow2.TextTransparency = 1
+    glow2.ZIndex = 49
+    glow2.Parent = introHolder
+
+    local textGrad = Instance.new("UIGradient", introText)
+    textGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.5, mixColor(P.ACCENT, Color3.new(1, 1, 1), 0.35)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+    })
+    textGrad.Rotation = 45
+
+    task.spawn(function()
+        local a = 45
+        while introText.Parent do
+            a = (a + 1) % 360
+            textGrad.Rotation = a
+            RunService.RenderStepped:Wait()
+        end
+    end)
+
+    task.spawn(function()
+        local t = 0
+        while glow1.Parent do
+            t = (t + 0.005) % 1
+            glow1.TextColor3 = Color3.fromHSV(t, 0.7, 1)
+            glow2.TextColor3 = Color3.fromHSV((t + 0.5) % 1, 0.8, 1)
+            RunService.RenderStepped:Wait()
+        end
+    end)
+
+    local introScale = Instance.new("UIScale", introHolder)
+    introScale.Scale = 0.4
+
+    -- ========= BOX =========
     local box = Instance.new("Frame")
     box.Size = UDim2.fromOffset(440, 0)
     box.AutomaticSize = Enum.AutomaticSize.Y
-    box.Position = UDim2.fromScale(0.5, 0.5)
+    box.Position = UDim2.fromScale(0.5, -0.4)
     box.AnchorPoint = Vector2.new(0.5, 0.5)
     box.BackgroundColor3 = Color3.new(1, 1, 1)
     box.BorderSizePixel = 0
+    box.Visible = false
     box.Parent = bg
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 14)
 
-    local bgGrad = Instance.new("UIGradient", box)
-    bgGrad.Rotation = 90
-    bgGrad.Color = ColorSequence.new({
+    local bgGrad2 = Instance.new("UIGradient", box)
+    bgGrad2.Rotation = 90
+    bgGrad2.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 24, 30)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 16, 20)),
     })
@@ -339,12 +441,6 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     local boxStroke = Instance.new("UIStroke", box)
     boxStroke.Color = Color3.fromRGB(42, 42, 54)
     boxStroke.Thickness = 1
-
-    local scale = Instance.new("UIScale", box)
-    scale.Scale = 0.92
-    TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Scale = 1,
-    }):Play()
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.fromOffset(24, 24)
@@ -405,16 +501,16 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     accentBar.Parent = titleRow
     Instance.new("UICorner", accentBar).CornerRadius = UDim.new(1, 0)
 
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -14, 1, 0)
-    title.Position = UDim2.new(0, 14, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = ks.Title or "Key System"
-    title.TextColor3 = P.TEXT
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = titleRow
+    local title2 = Instance.new("TextLabel")
+    title2.Size = UDim2.new(1, -14, 1, 0)
+    title2.Position = UDim2.new(0, 14, 0, 0)
+    title2.BackgroundTransparency = 1
+    title2.Text = ks.Title or "Key System"
+    title2.TextColor3 = P.TEXT
+    title2.Font = Enum.Font.GothamBold
+    title2.TextSize = 18
+    title2.TextXAlignment = Enum.TextXAlignment.Left
+    title2.Parent = titleRow
 
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, 0, 0, 0)
@@ -512,14 +608,10 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     end)
 
     inputBox.Focused:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.15), {
-            Color = P.ACCENT,
-        }):Play()
+        TweenService:Create(inputStroke, TweenInfo.new(0.15), { Color = P.ACCENT }):Play()
     end)
     inputBox.FocusLost:Connect(function()
-        TweenService:Create(inputStroke, TweenInfo.new(0.15), {
-            Color = Color3.fromRGB(42, 42, 54),
-        }):Play()
+        TweenService:Create(inputStroke, TweenInfo.new(0.15), { Color = Color3.fromRGB(42, 42, 54) }):Play()
     end)
 
     local status = Instance.new("TextLabel")
@@ -629,13 +721,11 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     end
 
     local function doClose()
-        TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-            Scale = 0.92,
+        TweenService:Create(bg, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(box, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Position = UDim2.fromScale(0.5, -0.4),
         }):Play()
-        TweenService:Create(bg, TweenInfo.new(0.2), {
-            BackgroundTransparency = 1,
-        }):Play()
-        task.wait(0.22)
+        task.wait(0.3)
         gui:Destroy()
     end
 
@@ -654,14 +744,8 @@ local function _showKeyPrompt(ks, valid, onSuccess)
         local entered = inputBox.Text
         if _checkKey(entered, valid) then
             if ks.SaveKey ~= false then _saveKey(ks.FileName, entered) end
-            TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-                Scale = 0.92,
-            }):Play()
-            TweenService:Create(bg, TweenInfo.new(0.2), {
-                BackgroundTransparency = 1,
-            }):Play()
-            task.wait(0.22)
-            gui:Destroy()
+            doClose()
+            task.wait(0.3)
             onSuccess()
         else
             status.Text = "Invalid key, try again."
@@ -675,7 +759,88 @@ local function _showKeyPrompt(ks, valid, onSuccess)
     inputBox:GetPropertyChangedSignal("Text"):Connect(function() status.Text = "" end)
     closeBtn.MouseButton1Click:Connect(doClose)
 
-    task.defer(function() pcall(function() inputBox:CaptureFocus() end) end)
+    -- ========= INTRO SEQUENCE =========
+    task.spawn(function()
+        task.wait(0.4)
+
+        TweenService:Create(introText, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+        TweenService:Create(glow1, TweenInfo.new(0.3), { TextTransparency = 0.45 }):Play()
+        TweenService:Create(glow2, TweenInfo.new(0.3), { TextTransparency = 0.7 }):Play()
+
+        TweenService:Create(introScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Scale = 1.2,
+        }):Play()
+        task.wait(0.8)
+
+        TweenService:Create(introHolder, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut), {
+            Position = UDim2.fromScale(0.5, 0.65),
+        }):Play()
+        task.wait(0.6)
+
+        local rotDur = 1.0
+        local t0 = tick()
+        local rotConn
+        rotConn = RunService.RenderStepped:Connect(function()
+            local a = math.min((tick() - t0) / rotDur, 1) * 360
+            introText.Rotation = a
+            glow1.Rotation = a
+            glow2.Rotation = a
+            if a >= 360 then
+                if rotConn then rotConn:Disconnect() end
+                introText.Rotation = 0
+                glow1.Rotation = 0
+                glow2.Rotation = 0
+            end
+        end)
+        task.wait(rotDur + 0.05)
+
+        TweenService:Create(introScale, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Scale = 2.0,
+        }):Play()
+        task.wait(0.3)
+        TweenService:Create(introScale, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Scale = 0.9,
+        }):Play()
+        task.wait(0.35)
+
+        local cX = bg.AbsoluteSize.X * 0.5
+        local cY = bg.AbsoluteSize.Y * 0.65
+        local N = 28
+        for i = 1, N do
+            local angle = (i / N) * math.pi * 2
+            local flake = Instance.new("Frame")
+            flake.Size = UDim2.fromOffset(5, 5)
+            flake.Position = UDim2.fromOffset(cX, cY)
+            flake.AnchorPoint = Vector2.new(0.5, 0.5)
+            flake.BackgroundColor3 = Color3.fromHSV(math.random(), 0.7, 1)
+            flake.BackgroundTransparency = 0.1
+            flake.BorderSizePixel = 0
+            flake.ZIndex = 52
+            flake.Parent = bg
+            Instance.new("UICorner", flake).CornerRadius = UDim.new(1, 0)
+            local dist = math.random(130, 230)
+            TweenService:Create(flake, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.fromOffset(cX + math.cos(angle) * dist, cY + math.sin(angle) * dist),
+                BackgroundTransparency = 1,
+                Size = UDim2.fromOffset(1, 1),
+            }):Play()
+            task.delay(0.85, function() if flake and flake.Parent then flake:Destroy() end end)
+        end
+        task.wait(0.35)
+
+        TweenService:Create(introText, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+        TweenService:Create(glow1, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+        TweenService:Create(glow2, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+        task.wait(0.45)
+        introHolder:Destroy()
+
+        box.Visible = true
+        TweenService:Create(box, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = UDim2.fromScale(0.5, 0.5),
+        }):Play()
+        task.wait(0.6)
+        pcall(function() inputBox:CaptureFocus() end)
+    end)
 end
 -- ============================================================
 -- BUILDERS
