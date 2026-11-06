@@ -1397,11 +1397,11 @@ function Lib:_CreateWindowCore(cfg)
         BorderSizePixel = 0, ZIndex = 3, Parent = main,
     })
     addCorner(titleBar, 16)
-    new("Frame", {
+    local tbFix = new("Frame", {
         Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16), BackgroundColor3 = barColor,
         BorderSizePixel = 0, ZIndex = 3, Parent = titleBar,
     })
-    new("Frame", {
+    local titleDivider = new("Frame", {
         Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = WHITE,
         BackgroundTransparency = 0.94, BorderSizePixel = 0, ZIndex = 4, Parent = titleBar,
     })
@@ -1485,6 +1485,16 @@ function Lib:_CreateWindowCore(cfg)
         end
     end)
 
+    -- keep the title bar on screen (main is centre-anchored, so Position = centre point)
+    local function clampPos(pos)
+        local g, sz = gui.AbsoluteSize, main.AbsoluteSize
+        local cx = g.X * pos.X.Scale + pos.X.Offset
+        local cy = g.Y * pos.Y.Scale + pos.Y.Offset
+        cx = math.clamp(cx, 80 - sz.X / 2, g.X - 80 + sz.X / 2)
+        cy = math.clamp(cy, sz.Y / 2, math.max(sz.Y / 2, g.Y - 46 + sz.Y / 2))
+        return UDim2.fromOffset(cx, cy)
+    end
+
     -- window drag (mouse + touch)
     do
         local dragging, startPos, origin
@@ -1498,7 +1508,7 @@ function Lib:_CreateWindowCore(cfg)
         maid:Add(UserInputService.InputChanged:Connect(function(i)
             if dragging and isMove(i) then
                 local d = i.Position - startPos
-                main.Position = UDim2.new(origin.X.Scale, origin.X.Offset + d.X, origin.Y.Scale, origin.Y.Offset + d.Y)
+                main.Position = clampPos(UDim2.new(origin.X.Scale, origin.X.Offset + d.X, origin.Y.Scale, origin.Y.Offset + d.Y))
             end
         end))
         maid:Add(UserInputService.InputEnded:Connect(function(i)
@@ -1738,14 +1748,31 @@ function Lib:_CreateWindowCore(cfg)
 
     -- minimize / close / toggle
     local minimized = false
+    local MIN_H = 46
     btnMin.MouseButton1Click:Connect(function()
         minimized = not minimized
+        local pos = main.Position
+        local dy
         if minimized then
-            tween(main, 0.3, { Size = UDim2.fromOffset(W, 46) })
-            task.delay(0.2, function() if minimized then body.Visible = false end end)
+            -- centre-anchored: move the centre up by half the lost height so the top edge stays put
+            dy = (MIN_H - H) / 2
+            tween(main, 0.3, { Size = UDim2.fromOffset(W, MIN_H), Position = UDim2.new(pos.X.Scale, pos.X.Offset, pos.Y.Scale, pos.Y.Offset + dy) })
+            task.delay(0.2, function()
+                if minimized then
+                    body.Visible = false
+                    tbFix.Visible = false          -- bottom corners round again when collapsed
+                    titleDivider.Visible = false
+                end
+            end)
         else
             body.Visible = true
-            tween(main, 0.35, { Size = fullSize }, Enum.EasingStyle.Back)
+            tbFix.Visible = true
+            titleDivider.Visible = true
+            -- grow downward from the fixed top edge; if it would hang off the bottom, lift it just enough
+            local top = main.AbsolutePosition.Y - gui.AbsolutePosition.Y
+            local shift = math.clamp(top + H - gui.AbsoluteSize.Y, 0, math.max(top, 0))
+            dy = (H - MIN_H) / 2 - shift
+            tween(main, 0.3, { Size = fullSize, Position = UDim2.new(pos.X.Scale, pos.X.Offset, pos.Y.Scale, pos.Y.Offset + dy) })
         end
     end)
 
