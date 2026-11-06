@@ -1298,6 +1298,37 @@ function B.Paragraph(win, page, cfg)
 end
 
 -- ============================================================
+-- TAB ICONS
+-- CreateTab(name, icon). icon can be:
+--   "home"                     -> name from Lib.Icons
+--   "rbxassetid://123" / 123   -> any image id
+--   { Id = 123, RectSize = Vector2.new(48,48), RectOffset = Vector2.new(0,771) }
+--                              -> a sprite-sheet icon (e.g. Lucide)
+-- ============================================================
+Lib.Icons = {
+    home   = "rbxassetid://92190299966310",
+    info   = "rbxassetid://119096461016615",
+    file   = "rbxassetid://89294979831077",
+    folder = "rbxassetid://74631950400584",
+    menu   = "rbxassetid://134384554225463",
+    -- Lucide "server" sprite (48px sheet)
+    server = { Id = 15269177520, RectSize = Vector2.new(48, 48), RectOffset = Vector2.new(0, 771) },
+}
+
+local function applyIcon(img, icon)
+    if type(icon) == "string" and Lib.Icons[icon] ~= nil then icon = Lib.Icons[icon] end
+    if type(icon) == "table" then
+        img.Image = icon.Image or ("rbxassetid://" .. tostring(icon.Id))
+        if icon.RectSize then img.ImageRectSize = icon.RectSize end
+        if icon.RectOffset then img.ImageRectOffset = icon.RectOffset end
+    elseif type(icon) == "number" then
+        img.Image = "rbxassetid://" .. icon
+    else
+        img.Image = tostring(icon)
+    end
+end
+
+-- ============================================================
 -- WINDOW CORE
 -- ============================================================
 function Lib:_CreateWindowCore(cfg)
@@ -1360,9 +1391,15 @@ function Lib:_CreateWindowCore(cfg)
     win.Background = bgLayer
 
     -- title bar
+    local barColor = P.BG:Lerp(P.PANEL, 0.75)
     local titleBar = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = P.PANEL, BackgroundTransparency = 0.25,
+        Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = barColor, BackgroundTransparency = 0,
         BorderSizePixel = 0, ZIndex = 3, Parent = main,
+    })
+    addCorner(titleBar, 16)
+    new("Frame", {
+        Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -16), BackgroundColor3 = barColor,
+        BorderSizePixel = 0, ZIndex = 3, Parent = titleBar,
     })
     new("Frame", {
         Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = WHITE,
@@ -1441,7 +1478,9 @@ function Lib:_CreateWindowCore(cfg)
                 local p = i / 8
                 table.insert(kp, ColorSequenceKeypoint.new(p, Color3.fromHSV((t + p * freq) % 1, 0.75, 1)))
             end
-            titleGrad.Color = ColorSequence.new(kp)
+            local seq = ColorSequence.new(kp)
+            titleGrad.Color = seq
+            if win._activeGrad then win._activeGrad.Color = seq end
             RunService.RenderStepped:Wait()
         end
     end)
@@ -1622,14 +1661,18 @@ function Lib:_CreateWindowCore(cfg)
         searchPage.Visible = false
         for n, b in pairs(self.TabButtons) do
             local active = (n == name)
-            tween(b.Btn, 0.2, { BackgroundTransparency = active and 0.8 or 1, TextColor3 = active and P.TEXT or P.MUTED })
-            tween(b.Bar, 0.25, { Size = UDim2.fromOffset(3, active and 16 or 0) }, Enum.EasingStyle.Back)
+            tween(b.Btn, 0.2, { BackgroundTransparency = active and 0.8 or 1 })
+            tween(b.Label, 0.2, { TextColor3 = active and WHITE or P.MUTED })
+            b.Grad.Enabled = active
+            if b.Icon then tween(b.Icon, 0.2, { ImageColor3 = active and WHITE or P.MUTED }) end
         end
+        self._activeGrad = self.TabButtons[name].Grad
         page.Position = UDim2.fromOffset(0, 16)
         tween(page, 0.3, { Position = UDim2.fromOffset(0, 0) })
     end
 
-    function win:CreateTab(name)
+    function win:CreateTab(name, icon)
+        if type(name) == "table" then name, icon = name.Name, name.Icon end
         name = tostring(name)
         self._tabCount += 1
         local page = makePage(false)
@@ -1637,25 +1680,42 @@ function Lib:_CreateWindowCore(cfg)
 
         local btn = new("TextButton", {
             Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = P.ACCENT, BackgroundTransparency = 1,
-            Text = name, TextColor3 = P.MUTED, Font = Enum.Font.GothamSemibold, TextSize = 12,
-            TextXAlignment = Enum.TextXAlignment.Left, AutoButtonColor = false, LayoutOrder = self._tabCount,
-            ZIndex = 5, Parent = tabScroll,
+            Text = "", AutoButtonColor = false, LayoutOrder = self._tabCount, ZIndex = 5, Parent = tabScroll,
         })
         addCorner(btn, 9)
-        new("UIPadding", { PaddingLeft = UDim.new(0, 16), Parent = btn })
-        local bar = new("Frame", {
-            Size = UDim2.fromOffset(3, 0), Position = UDim2.new(0, -10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 6, Parent = btn,
+
+        local iconImg
+        if icon ~= nil and icon ~= "" then
+            iconImg = new("ImageLabel", {
+                Size = UDim2.fromOffset(16, 16), Position = UDim2.new(0, 10, 0.5, -8), BackgroundTransparency = 1,
+                ImageColor3 = P.MUTED, ZIndex = 6, Parent = btn,
+            })
+            applyIcon(iconImg, icon)
+        end
+
+        -- text lives in its own label so the rainbow UIGradient tints only the text
+        local lbl = new("TextLabel", {
+            Size = UDim2.new(1, iconImg and -36 or -18, 1, 0), Position = UDim2.fromOffset(iconImg and 32 or 14, 0),
+            BackgroundTransparency = 1, Text = name, TextColor3 = P.MUTED, Font = Enum.Font.GothamSemibold,
+            TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 6, Parent = btn,
         })
-        addCorner(bar, 100)
-        new("UIGradient", { Rotation = 90, Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = bar })
-        self.TabButtons[name] = { Btn = btn, Bar = bar }
+        local grad = new("UIGradient", { Rotation = 45, Enabled = false, Parent = lbl })
+        self.TabButtons[name] = { Btn = btn, Label = lbl, Grad = grad, Icon = iconImg }
 
         btn.MouseEnter:Connect(function()
-            if self.CurrentName ~= name then tween(btn, 0.12, { BackgroundTransparency = 0.9, TextColor3 = P.TEXT }) end
+            if self.CurrentName ~= name then
+                tween(btn, 0.12, { BackgroundTransparency = 0.9 })
+                tween(lbl, 0.12, { TextColor3 = P.TEXT })
+                if iconImg then tween(iconImg, 0.12, { ImageColor3 = P.TEXT }) end
+            end
         end)
         btn.MouseLeave:Connect(function()
-            if self.CurrentName ~= name then tween(btn, 0.12, { BackgroundTransparency = 1, TextColor3 = P.MUTED }) end
+            if self.CurrentName ~= name then
+                tween(btn, 0.12, { BackgroundTransparency = 1 })
+                tween(lbl, 0.12, { TextColor3 = P.MUTED })
+                if iconImg then tween(iconImg, 0.12, { ImageColor3 = P.MUTED }) end
+            end
         end)
         btn.MouseButton1Click:Connect(function() self:SelectTab(name) end)
 
