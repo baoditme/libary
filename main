@@ -1834,12 +1834,10 @@ end
 
 -- ============================================================
 -- PUBLIC: CreateWindow
--- Intro luon hien (tat bang Intro = false).
---  * Can nhap key  : intro -> loading -> o key -> cua so
---  * Khong can key : intro -> loading -> cua so
---    (tat KeySystem / khong co key hop le / da luu key dung)
--- Ham nay YIELD cho den khi xong va tra ve cua so
--- (nil neu nguoi dung dong o key).
+-- Intro luôn hiển thị (tắt bằng Intro = false).
+--  * Có key   : intro -> loading -> key box -> cửa sổ chính
+--  * Không key: intro -> loading -> cửa sổ chính
+-- Hàm YIELD đến khi flow xong. Trả nil nếu user đóng key box.
 -- ============================================================
 function Lib:CreateWindow(cfg)
     cfg = cfg or {}
@@ -1868,24 +1866,50 @@ function Lib:CreateWindow(cfg)
         if saved and checkKey(saved, valid) then needKey = false end
     end
 
-    -- can nhap key: intro -> loading -> o key
-    if needKey then
+    -- Chạy prompt an toàn: pcall + timeout.
+    -- Nếu prompt lỗi hoặc treo, vẫn set finished = true để flow chính
+    -- không bị block và build() vẫn chạy.
+    local function runPrompt(promptFn, timeout)
         local result, finished = false, false
-        showKeyPrompt(ks, valid, function(ok) result = ok; finished = true end)
-        while not finished do task.wait(0.1) end
-        if not result then return nil end
+        task.spawn(function()
+            local ok, err = pcall(promptFn, function(isOk)
+                result = isOk and true or false
+                finished = true
+            end)
+            if not ok then
+                warn("[RYZE UI] prompt error: " .. tostring(err))
+                if not finished then
+                    finished = true
+                    result = false
+                end
+            end
+        end)
+        local elapsed = 0
+        while not finished do
+            elapsed += task.wait(0.05)
+            if elapsed > (timeout or 300) then
+                warn("[RYZE UI] prompt timed out after " .. tostring(timeout) .. "s")
+                return false
+            end
+        end
+        return result
+    end
+
+    -- Cần key: intro + loading + key box
+    if needKey then
+        local verified = runPrompt(function(cb)
+            showKeyPrompt(ks, valid, cb)
+        end, 600)
+        if not verified then return nil end
         return build()
     end
 
-    -- khong can key: van chay intro
+    -- Không cần key: vẫn chạy intro + loading (nếu không tắt)
     if cfg.Intro ~= false then
-        local finished = false
-        local introCfg = { Title = ks.Title or cfg.Title }
-        showKeyPrompt(introCfg, {}, function() finished = true end, true)
-        while not finished do task.wait(0.1) end
+        runPrompt(function(cb)
+            showKeyPrompt({ Title = ks.Title or cfg.Title }, {}, cb, true)
+        end, 60)
     end
 
     return build()
 end
-
-return Lib
