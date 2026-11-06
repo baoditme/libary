@@ -1,6 +1,6 @@
 -- ============================================================
 -- RYZE UI LIBRARY v2.0
--- Aurora background, animated gradient border, spring toggles,
+-- Animated gradient border, spring toggles,
 -- ripple buttons, HSV color picker, overlay dropdowns, key system.
 -- API giu tuong thich v1.3: CreateWindow / CreateTab / Create*.
 -- ============================================================
@@ -173,12 +173,12 @@ local function ensureNotify()
     })
     mount(notifyGui)
     notifyHolder = new("Frame", {
-        Size = UDim2.new(0, 320, 1, -24), Position = UDim2.new(1, -332, 0, 12),
+        Size = UDim2.new(0, 320, 1, -24), Position = UDim2.new(1, -332, 0, 14),
         BackgroundTransparency = 1, Parent = notifyGui,
     })
     new("UIListLayout", {
         Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder,
-        VerticalAlignment = Enum.VerticalAlignment.Bottom, Parent = notifyHolder,
+        VerticalAlignment = Enum.VerticalAlignment.Top, Parent = notifyHolder,
     })
 end
 
@@ -194,7 +194,7 @@ function Lib:Notify(cfg)
     local color = colors[ntype] or colors.info
     local H = 68
 
-    notifyOrder += 1
+    notifyOrder -= 1
     local wrap = new("Frame", {
         Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1,
         LayoutOrder = notifyOrder, Parent = notifyHolder,
@@ -406,27 +406,45 @@ local function showKeyPrompt(ks, valid, done)
     local function mkText(size, color, z, trans)
         return new("TextLabel", {
             Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = titleText,
-            TextColor3 = color, Font = Enum.Font.GothamBlack, TextSize = size,
+            TextColor3 = color, Font = Enum.Font.GothamBold, TextSize = size,
             TextTransparency = trans, ZIndex = z, Parent = holder,
         })
     end
-    local glow  = mkText(74, P.ACCENT, 49, 0.82)
-    local intro = mkText(56, Color3.fromRGB(238, 238, 248), 51, 0)
+    local glowOuter = mkText(86, P.ACCENT:Lerp(Color3.fromRGB(120, 200, 255), 0.6), 48, 0.93)
+    local glowInner = mkText(68, P.ACCENT, 49, 0.85)
+    local chromaR   = mkText(56, Color3.fromRGB(255, 70, 90), 50, 0.94)
+    local chromaC   = mkText(56, Color3.fromRGB(80, 200, 255), 50, 0.94)
+    chromaR.Position = UDim2.fromOffset(1.5, 0)
+    chromaC.Position = UDim2.fromOffset(-1.5, 0)
+    local intro = mkText(56, Color3.fromRGB(225, 225, 235), 51, 0)
+    local introStroke = new("UIStroke", { Color = P.ACCENT, Thickness = 1.5, Transparency = 0.5, Parent = intro })
     local shine = mkText(56, WHITE, 52, 0)
-    new("UIStroke", { Color = P.ACCENT, Thickness = 1.5, Transparency = 0.5, Parent = intro })
     local shineGrad = new("UIGradient", {
         Transparency = NumberSequence.new({
             NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.42, 1),
             NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1),
         }),
-        Offset = Vector2.new(-1, 0), Parent = shine,
+        Offset = Vector2.new(-0.6, 0), Parent = shine,
     })
+    local layers = { glowOuter, glowInner, chromaR, chromaC, intro, shine }
+
+    local pulsing = true
     task.spawn(function()
-        if not sleep(0.9) then return end
+        local t = 0
+        while alive and pulsing do
+            t = t + 0.035
+            glowInner.TextTransparency = 0.82 + math.sin(t) * 0.04
+            glowOuter.TextTransparency = 0.92 + math.sin(t + 1.4) * 0.03
+            RunService.RenderStepped:Wait()
+        end
+    end)
+    task.spawn(function()
+        if not sleep(0.4) then return end
         while alive and shine.Parent do
-            shineGrad.Offset = Vector2.new(-1, 0)
-            tween(shineGrad, 0.8, { Offset = Vector2.new(1, 0) }, Enum.EasingStyle.Quad)
-            if not sleep(2.2) then return end
+            tween(shineGrad, 0.9, { Offset = Vector2.new(0.6, 0) }, Enum.EasingStyle.Linear)
+            if not sleep(0.9) then return end
+            shineGrad.Offset = Vector2.new(-0.6, 0)
+            if not sleep(2.8) then return end
         end
     end)
 
@@ -507,14 +525,19 @@ local function showKeyPrompt(ks, valid, done)
         TextColor3 = P.TEXT, Font = Enum.Font.Gotham, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left,
         ClearTextOnFocus = false, Parent = inputRow,
     })
-    local verifyBtn = new("TextButton", {
-        Size = UDim2.new(0, 92, 1, -10), Position = UDim2.new(1, -98, 0, 5), BackgroundColor3 = WHITE,
-        Text = "Verify", TextColor3 = WHITE, Font = Enum.Font.GothamBold, TextSize = 12,
-        AutoButtonColor = false, Parent = inputRow,
+    local verifyHolder = new("Frame", {
+        Size = UDim2.new(0, 92, 1, -10), Position = UDim2.new(1, -98, 0, 5), BackgroundTransparency = 1, Parent = inputRow,
     })
-    addCorner(verifyBtn, 8)
-    new("UIGradient", { Rotation = 20, Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = verifyBtn })
-    local vScale = new("UIScale", { Parent = verifyBtn })
+    local vFill = new("Frame", {
+        Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 1, Parent = verifyHolder,
+    })
+    addCorner(vFill, 8)
+    new("UIGradient", { Rotation = 20, Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = vFill })
+    local verifyBtn = new("TextButton", {
+        Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "Verify", TextColor3 = WHITE,
+        Font = Enum.Font.GothamBold, TextSize = 12, AutoButtonColor = false, ZIndex = 2, Parent = verifyHolder,
+    })
+    local vScale = new("UIScale", { Parent = verifyHolder })
     verifyBtn.MouseButton1Down:Connect(function() tween(vScale, 0.08, { Scale = 0.94 }) end)
     verifyBtn.MouseButton1Up:Connect(function() tween(vScale, 0.2, { Scale = 1 }, Enum.EasingStyle.Back) end)
     verifyBtn.MouseLeave:Connect(function() tween(vScale, 0.15, { Scale = 1 }) end)
@@ -582,16 +605,6 @@ local function showKeyPrompt(ks, valid, done)
     end
 
     local busy = false
-    local function shake()
-        local orig = box.Position
-        for _ = 1, 3 do
-            tween(box, 0.04, { Position = orig + UDim2.fromOffset(8, 0) })
-            task.wait(0.045)
-            tween(box, 0.04, { Position = orig - UDim2.fromOffset(8, 0) })
-            task.wait(0.045)
-        end
-        tween(box, 0.05, { Position = orig })
-    end
     local function submit()
         if busy or finished then return end
         busy = true
@@ -606,7 +619,7 @@ local function showKeyPrompt(ks, valid, done)
         status.Text = "Invalid key, try again."
         tween(boxStroke, 0.15, { Color = P.DANGER, Transparency = 0.1 })
         inputBox.Text = ""
-        shake()
+        task.wait(0.4)
         tween(boxStroke, 0.4, { Color = P.ACCENT, Transparency = 0.45 })
         busy = false
     end
@@ -617,17 +630,77 @@ local function showKeyPrompt(ks, valid, done)
 
     -- sequence
     task.spawn(function()
-        if not sleep(0.15) then return end
-        tween(holder, 0.95, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
-        if not sleep(1.3) then return end
+        if not sleep(0.1) then return end
 
-        -- burst
+        local steps = {
+            { 0.55, 0.5,   Enum.EasingDirection.In },
+            { 0.18, 0.40,  Enum.EasingDirection.Out },
+            { 0.14, 0.5,   Enum.EasingDirection.In },
+            { 0.12, 0.455, Enum.EasingDirection.Out },
+            { 0.09, 0.5,   Enum.EasingDirection.In },
+            { 0.08, 0.478, Enum.EasingDirection.Out },
+            { 0.06, 0.5,   Enum.EasingDirection.In },
+        }
+        for _, st in ipairs(steps) do
+            tween(holder, st[1], { Position = UDim2.fromScale(0.5, st[2]) }, Enum.EasingStyle.Quad, st[3])
+            if not sleep(st[1]) then return end
+        end
+        if not sleep(0.25) then return end
+
+        -- loading bar slides up from the bottom; the title text stays
+        local load = new("Frame", {
+            Size = UDim2.fromOffset(math.min(340, vp.X - 40), 0), AutomaticSize = Enum.AutomaticSize.Y,
+            Position = UDim2.new(0.5, 0, 1, 40), AnchorPoint = Vector2.new(0.5, 0),
+            BackgroundTransparency = 1, ZIndex = 60, Parent = bg,
+        })
+        new("UIListLayout", {
+            Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = load,
+        })
+        local track = new("Frame", {
+            Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = Color3.fromRGB(30, 30, 40),
+            BorderSizePixel = 0, LayoutOrder = 1, ZIndex = 61, Parent = load,
+        })
+        addCorner(track, 100)
+        local fill = new("Frame", {
+            Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 62, Parent = track,
+        })
+        addCorner(fill, 100)
+        new("UIGradient", { Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = fill })
+        local statusRow = new("Frame", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, LayoutOrder = 2, ZIndex = 61, Parent = load })
+        local phase = new("TextLabel", {
+            Size = UDim2.new(1, -50, 1, 0), BackgroundTransparency = 1, Text = "Initializing...",
+            TextColor3 = P.MUTED, Font = Enum.Font.GothamMedium, TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 61, Parent = statusRow,
+        })
+        local pct = new("TextLabel", {
+            Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(1, -50, 0, 0), BackgroundTransparency = 1,
+            Text = "0%", TextColor3 = P.ACCENT, Font = Enum.Font.GothamBold, TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 61, Parent = statusRow,
+        })
+        tween(load, 0.6, { Position = UDim2.new(0.5, 0, 0.5, 70) }, Enum.EasingStyle.Back)
+        if not sleep(0.65) then return end
+
+        local phases = {
+            { "Loading UI...", 0.20, 0.35 }, { "Loading features...", 0.45, 0.45 },
+            { "Loading modules...", 0.68, 0.45 }, { "Preparing key check...", 0.88, 0.45 }, { "Ready", 1, 0.3 },
+        }
+        for _, ph in ipairs(phases) do
+            phase.Text = ph[1]
+            pct.Text = math.floor(ph[2] * 100) .. "%"
+            tween(fill, ph[3], { Size = UDim2.new(ph[2], 0, 1, 0) })
+            if not sleep(ph[3]) then return end
+        end
+        if not sleep(0.2) then return end
+
+        -- loading done: bar leaves, text bursts away
+        tween(load, 0.4, { Position = UDim2.new(0.5, 0, 1, 40) }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
         local cx, cy = bg.AbsoluteSize.X * 0.5, bg.AbsoluteSize.Y * 0.5
         for i = 1, 64 do
             local ang = (i / 64) * math.pi * 2 + (math.random() - 0.5) * 0.2
-            local s = math.random(3, 8)
+            local sz = math.random(3, 8)
             local p = new("Frame", {
-                Size = UDim2.fromOffset(s, s), Position = UDim2.fromOffset(cx, cy), AnchorPoint = Vector2.new(0.5, 0.5),
+                Size = UDim2.fromOffset(sz, sz), Position = UDim2.fromOffset(cx, cy), AnchorPoint = Vector2.new(0.5, 0.5),
                 BackgroundColor3 = P.ACCENT:Lerp(P.ACCENT2, math.random()):Lerp(WHITE, math.random() * 0.4),
                 BorderSizePixel = 0, Rotation = math.random(0, 360), ZIndex = 52, Parent = bg,
             })
@@ -639,68 +712,12 @@ local function showKeyPrompt(ks, valid, done)
             })
             Debris:AddItem(p, dur + 0.05)
         end
-        tween(holderScale, 0.35, { Scale = 0.2 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        for _, l in ipairs({ glow, intro, shine }) do tween(l, 0.3, { TextTransparency = 1 }) end
-        for _, o in ipairs(intro:GetChildren()) do
-            if o:IsA("UIStroke") then tween(o, 0.3, { Transparency = 1 }) end
-        end
-        if not sleep(0.4) then return end
+        pulsing = false
+        tween(holderScale, 0.35, { Scale = 0.15 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        for _, l in ipairs(layers) do tween(l, 0.35, { TextTransparency = 1 }) end
+        tween(introStroke, 0.35, { Transparency = 1 })
+        if not sleep(0.45) then return end
         holder:Destroy()
-
-        -- loading
-        local load = new("Frame", {
-            Size = UDim2.fromOffset(math.min(340, vp.X - 40), 0), AutomaticSize = Enum.AutomaticSize.Y,
-            Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundTransparency = 1, ZIndex = 60, Parent = bg,
-        })
-        local loadScale = new("UIScale", { Scale = 0.9, Parent = load })
-        tween(loadScale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
-        new("UIListLayout", {
-            Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder,
-            HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = load,
-        })
-        new("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1, Text = titleText, TextColor3 = P.TEXT,
-            Font = Enum.Font.GothamBold, TextSize = 18, LayoutOrder = 1, ZIndex = 61, Parent = load,
-        })
-        local track = new("Frame", {
-            Size = UDim2.new(1, 0, 0, 5), BackgroundColor3 = Color3.fromRGB(30, 30, 40),
-            BorderSizePixel = 0, LayoutOrder = 2, ZIndex = 61, Parent = load,
-        })
-        addCorner(track, 100)
-        local fill = new("Frame", {
-            Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 62, Parent = track,
-        })
-        addCorner(fill, 100)
-        new("UIGradient", { Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = fill })
-        local statusRow = new("Frame", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, LayoutOrder = 3, ZIndex = 61, Parent = load })
-        local phase = new("TextLabel", {
-            Size = UDim2.new(1, -50, 1, 0), BackgroundTransparency = 1, Text = "Initializing...",
-            TextColor3 = P.MUTED, Font = Enum.Font.GothamMedium, TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 61, Parent = statusRow,
-        })
-        local pct = new("TextLabel", {
-            Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(1, -50, 0, 0), BackgroundTransparency = 1,
-            Text = "0%", TextColor3 = P.ACCENT, Font = Enum.Font.GothamBold, TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 61, Parent = statusRow,
-        })
-        local phases = {
-            { "Loading UI...", 0.20, 0.35 }, { "Loading features...", 0.45, 0.45 },
-            { "Loading modules...", 0.68, 0.45 }, { "Preparing key check...", 0.88, 0.45 }, { "Ready", 1, 0.3 },
-        }
-        for _, ph in ipairs(phases) do
-            phase.Text = ph[1]
-            pct.Text = math.floor(ph[2] * 100) .. "%"
-            tween(fill, ph[3], { Size = UDim2.new(ph[2], 0, 1, 0) })
-            if not sleep(ph[3]) then return end
-        end
-        if not sleep(0.15) then return end
-        tween(loadScale, 0.28, { Scale = 0.6 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        for _, el in ipairs(load:GetDescendants()) do
-            if el:IsA("TextLabel") then tween(el, 0.25, { TextTransparency = 1 })
-            elseif el:IsA("Frame") then tween(el, 0.25, { BackgroundTransparency = 1 }) end
-        end
-        if not sleep(0.3) then return end
         load:Destroy()
 
         box.Visible = true
@@ -1259,13 +1276,8 @@ function B.Paragraph(win, page, cfg)
     })
     addCorner(f, 10)
     addStroke(f, WHITE, 1, 0.94)
-    local bar = new("Frame", {
-        Size = UDim2.new(0, 3, 1, -16), Position = UDim2.fromOffset(0, 8), BackgroundColor3 = WHITE, BorderSizePixel = 0, Parent = f,
-    })
-    addCorner(bar, 100)
-    new("UIGradient", { Rotation = 90, Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = bar })
     new("UIPadding", {
-        PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 12), Parent = f,
+        PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = f,
     })
     new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = f })
     new("TextLabel", {
@@ -1339,45 +1351,13 @@ function Lib:_CreateWindowCore(cfg)
         if main.Visible then borderGrad.Rotation = (borderGrad.Rotation + dt * 45) % 360 end
     end))
 
-    -- aurora background
+    -- empty background layer (scripts can restyle win.Main / win.Background)
     local bgLayer = new("Frame", {
-        Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0,
+        Name = "Background", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0,
         ClipsDescendants = true, ZIndex = 1, Parent = main,
     })
-    if cfg.BgAnimation ~= false then
-        local orbs = {
-            { P.ACCENT,  300, UDim2.fromScale(-0.05, -0.1), UDim2.fromScale(0.45, 0.35), 11 },
-            { P.ACCENT2, 260, UDim2.fromScale(0.75, 0.55),  UDim2.fromScale(0.45, 0.05), 13 },
-            { P.ACCENT,  220, UDim2.fromScale(0.35, 0.85),  UDim2.fromScale(0.65, 0.6),  15 },
-        }
-        for _, o in ipairs(orbs) do
-            local orb = new("Frame", {
-                Size = UDim2.fromOffset(o[2], o[2]), Position = o[3], BackgroundColor3 = o[1],
-                BackgroundTransparency = 0.9, BorderSizePixel = 0, ZIndex = 1, Parent = bgLayer,
-            })
-            addCorner(orb, 100)
-            TweenService:Create(orb, TweenInfo.new(o[5], Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-                Position = o[4], BackgroundTransparency = 0.94,
-            }):Play()
-        end
-        task.spawn(function()
-            while alive do
-                local sz = math.random(2, 4)
-                local x = math.random()
-                local p = new("Frame", {
-                    Size = UDim2.fromOffset(sz, sz), Position = UDim2.new(x, 0, 1.05, 0), BackgroundColor3 = P.ACCENT2,
-                    BackgroundTransparency = 0.5, BorderSizePixel = 0, ZIndex = 1, Parent = bgLayer,
-                })
-                addCorner(p, 100)
-                local dur = math.random(8, 14)
-                tween(p, dur, {
-                    Position = UDim2.new(x + (math.random() - 0.5) * 0.2, 0, -0.05, 0), BackgroundTransparency = 1,
-                }, Enum.EasingStyle.Linear)
-                Debris:AddItem(p, dur + 0.1)
-                task.wait(math.random(4, 9) / 10)
-            end
-        end)
-    end
+    win.Main = main
+    win.Background = bgLayer
 
     -- title bar
     local titleBar = new("Frame", {
@@ -1389,62 +1369,80 @@ function Lib:_CreateWindowCore(cfg)
         BackgroundTransparency = 0.94, BorderSizePixel = 0, ZIndex = 4, Parent = titleBar,
     })
 
-    local logo = new("Frame", {
-        Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(10, 8), BackgroundColor3 = WHITE,
-        BorderSizePixel = 0, ZIndex = 4, Parent = titleBar,
+    local avatar = new("Frame", {
+        Size = UDim2.new(0, 28, 0, 28), Position = UDim2.new(0, 8, 0.5, -14), BackgroundColor3 = P.ACCENT,
+        BackgroundTransparency = 0.8, BorderSizePixel = 0, ZIndex = 4, Parent = titleBar,
     })
-    addCorner(logo, 9)
-    local logoGrad = new("UIGradient", { Rotation = 45, Color = ColorSequence.new(P.ACCENT, P.ACCENT2), Parent = logo })
-    TweenService:Create(logoGrad, TweenInfo.new(4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 225 }):Play()
+    addCorner(avatar, 6)
+    new("UIStroke", { Color = P.ACCENT, Thickness = 1.5, Parent = avatar })
     if cfg.Icon and cfg.Icon ~= "" then
+        avatar.BackgroundTransparency = 1
         local img = new("ImageLabel", {
-            Size = UDim2.new(1, -6, 1, -6), Position = UDim2.fromOffset(3, 3), BackgroundTransparency = 1,
-            Image = cfg.Icon, ScaleType = Enum.ScaleType.Fit, ZIndex = 5, Parent = logo,
+            Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Image = cfg.Icon,
+            ScaleType = Enum.ScaleType.Crop, ZIndex = 4, Parent = avatar,
         })
-        addCorner(img, 7)
-    else
-        new("TextLabel", {
-            Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = utf8Prefix(win.Title, 1):upper(),
-            TextColor3 = WHITE, Font = Enum.Font.GothamBlack, TextSize = 15, ZIndex = 5, Parent = logo,
-        })
+        addCorner(img, 6)
     end
 
     local titleLabel = new("TextLabel", {
-        Size = UDim2.new(1, -160, 1, 0), Position = UDim2.fromOffset(50, 0), BackgroundTransparency = 1, Text = " ",
-        TextColor3 = WHITE, Font = Enum.Font.GothamBold, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 4, Parent = titleBar,
+        Size = UDim2.new(0, 0, 1, 0), AutomaticSize = Enum.AutomaticSize.X, Position = UDim2.new(0, 44, 0, 0),
+        BackgroundTransparency = 1, Text = " ", TextColor3 = WHITE, Font = Enum.Font.GothamBold, TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4, Parent = titleBar,
     })
-    local titleGrad = new("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, P.ACCENT2), ColorSequenceKeypoint.new(0.5, WHITE), ColorSequenceKeypoint.new(1, P.ACCENT),
-        }),
-        Offset = Vector2.new(-0.5, 0), Parent = titleLabel,
-    })
-    TweenService:Create(titleGrad, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-        Offset = Vector2.new(0.5, 0),
-    }):Play()
+    local titleGrad = new("UIGradient", { Rotation = 45, Parent = titleLabel })
 
     task.spawn(function()
-        local full = win.Title
-        local n = utf8.len(full) or #full
-        local function put(txt)
-            local cur = (math.floor(tick() * 2) % 2 == 0) and "|" or " "
-            titleLabel.Text = txt .. " " .. cur
+        local fullText = win.Title
+        local cursorChar = "|"
+        task.spawn(function()
+            while alive and titleLabel.Parent do
+                cursorChar = "|"
+                task.wait(0.45)
+                cursorChar = ""
+                task.wait(0.45)
+            end
+        end)
+        while alive and titleLabel.Parent do
+            for _ = 1, 40 do
+                if not alive or not titleLabel.Parent then return end
+                titleLabel.Text = fullText .. " " .. cursorChar
+                task.wait(0.05)
+            end
+            for len = #fullText - 1, 0, -1 do
+                local sub = string.sub(fullText, 1, len)
+                for _ = 1, 2 do
+                    if not alive or not titleLabel.Parent then return end
+                    titleLabel.Text = (sub == "" and "" or (sub .. " ")) .. cursorChar
+                    task.wait(0.04)
+                end
+            end
+            for _ = 1, 40 do
+                if not alive or not titleLabel.Parent then return end
+                titleLabel.Text = cursorChar
+                task.wait(0.05)
+            end
+            for len = 1, #fullText do
+                local sub = string.sub(fullText, 1, len)
+                for _ = 1, 2 do
+                    if not alive or not titleLabel.Parent then return end
+                    titleLabel.Text = sub .. " " .. cursorChar
+                    task.wait(0.04)
+                end
+            end
         end
-        while alive do
-            for i = 1, n do
-                if not alive then return end
-                put(utf8Prefix(full, i)); task.wait(0.07)
+    end)
+
+    task.spawn(function()
+        local speed, freq = 0.6, 1.8
+        while alive and titleLabel.Parent do
+            local t = tick() * speed
+            local kp = {}
+            for i = 0, 8 do
+                local p = i / 8
+                table.insert(kp, ColorSequenceKeypoint.new(p, Color3.fromHSV((t + p * freq) % 1, 0.75, 1)))
             end
-            for _ = 1, 36 do
-                if not alive then return end
-                put(full); task.wait(0.08)
-            end
-            for i = n - 1, 0, -1 do
-                if not alive then return end
-                put(utf8Prefix(full, i)); task.wait(0.04)
-            end
-            task.wait(0.35)
+            titleGrad.Color = ColorSequence.new(kp)
+            RunService.RenderStepped:Wait()
         end
     end)
 
@@ -1469,24 +1467,31 @@ function Lib:_CreateWindowCore(cfg)
         end))
     end
 
-    -- controls
-    local function ctrlBtn(txt, xOff, hoverColor)
+    -- controls: [ - | x ] in one rectangle
+    local ctrlGroup = new("Frame", {
+        Size = UDim2.fromOffset(60, 26), Position = UDim2.new(1, -68, 0, 10), BackgroundColor3 = P.ELEM,
+        BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 4, Parent = titleBar,
+    })
+    addCorner(ctrlGroup, 8)
+    addStroke(ctrlGroup, WHITE, 1, 0.94)
+
+    local function ctrlBtn(txt, xScale, hoverColor)
         local b = new("TextButton", {
-            Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, xOff, 0, 9), BackgroundColor3 = P.ELEM,
-            BackgroundTransparency = 0.4, Text = txt, TextColor3 = P.MUTED, Font = Enum.Font.GothamBold,
-            TextSize = 13, AutoButtonColor = false, ZIndex = 5, Parent = titleBar,
+            Size = UDim2.new(0.5, 0, 1, 0), Position = UDim2.new(xScale, 0, 0, 0), BackgroundColor3 = hoverColor,
+            BackgroundTransparency = 1, Text = txt, TextColor3 = P.TEXT, Font = Enum.Font.GothamMedium,
+            TextSize = 13, AutoButtonColor = false, ZIndex = 5, Parent = ctrlGroup,
         })
-        addCorner(b, 9)
-        b.MouseEnter:Connect(function()
-            tween(b, 0.12, { BackgroundColor3 = hoverColor, BackgroundTransparency = 0, TextColor3 = WHITE })
-        end)
-        b.MouseLeave:Connect(function()
-            tween(b, 0.12, { BackgroundColor3 = P.ELEM, BackgroundTransparency = 0.4, TextColor3 = P.MUTED })
-        end)
+        addCorner(b, 8)
+        b.MouseEnter:Connect(function() tween(b, 0.12, { BackgroundTransparency = 0, TextColor3 = WHITE }) end)
+        b.MouseLeave:Connect(function() tween(b, 0.12, { BackgroundTransparency = 1, TextColor3 = P.TEXT }) end)
         return b
     end
-    local btnMin   = ctrlBtn("-", -70, P.HOVER)
-    local btnClose = ctrlBtn("x", -38, P.DANGER)
+    local btnMin   = ctrlBtn("-", 0, P.HOVER)
+    local btnClose = ctrlBtn("x", 0.5, P.DANGER)
+    new("Frame", {
+        Size = UDim2.new(0, 1, 1, -10), Position = UDim2.new(0.5, 0, 0, 5), BackgroundColor3 = Color3.fromRGB(60, 60, 72),
+        BorderSizePixel = 0, ZIndex = 6, Parent = ctrlGroup,
+    })
 
     -- body
     local body = new("Frame", {
@@ -1502,7 +1507,7 @@ function Lib:_CreateWindowCore(cfg)
     addStroke(sidebar, WHITE, 1, 0.95)
 
     local tabScroll = new("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, -44), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 0,
+        Size = UDim2.new(1, 0, 1, -58), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 0,
         CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ZIndex = 4, Parent = sidebar,
     })
     new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = tabScroll })
@@ -1511,19 +1516,31 @@ function Lib:_CreateWindowCore(cfg)
     })
 
     local footer = new("Frame", {
-        Size = UDim2.new(1, -16, 0, 34), Position = UDim2.new(0, 8, 1, -40), BackgroundColor3 = P.ELEM,
+        Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52), BackgroundColor3 = P.ELEM,
         BackgroundTransparency = 0.3, BorderSizePixel = 0, ZIndex = 4, Parent = sidebar,
     })
-    addCorner(footer, 9)
+    addCorner(footer, 10)
+    local av = new("ImageLabel", {
+        Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(7, 7), BackgroundColor3 = P.PANEL,
+        BorderSizePixel = 0, Image = "", ZIndex = 5, Parent = footer,
+    })
+    addCorner(av, 100)
+    addStroke(av, P.ACCENT, 1.5, 0.3)
     local playerName = "player"
     pcall(function() playerName = Players.LocalPlayer.DisplayName end)
+    task.spawn(function()
+        local ok, img = pcall(function()
+            return Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+        end)
+        if ok and img and av.Parent then av.Image = img end
+    end)
     new("TextLabel", {
-        Size = UDim2.new(1, -16, 0, 16), Position = UDim2.fromOffset(10, 3), BackgroundTransparency = 1, Text = playerName,
+        Size = UDim2.new(1, -50, 0, 16), Position = UDim2.fromOffset(44, 7), BackgroundTransparency = 1, Text = playerName,
         TextColor3 = P.TEXT, Font = Enum.Font.GothamBold, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left,
         TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 5, Parent = footer,
     })
     new("TextLabel", {
-        Size = UDim2.new(1, -16, 0, 12), Position = UDim2.fromOffset(10, 18), BackgroundTransparency = 1,
+        Size = UDim2.new(1, -50, 0, 12), Position = UDim2.fromOffset(44, 23), BackgroundTransparency = 1,
         Text = "RYZE UI v" .. Lib.Version, TextColor3 = P.MUTED, Font = Enum.Font.Gotham, TextSize = 9,
         TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 5, Parent = footer,
     })
