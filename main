@@ -1913,3 +1913,4 @@ function Lib:CreateWindow(cfg)
 
     return build()
 end
+return Lib
