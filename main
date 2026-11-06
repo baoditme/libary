@@ -3,6 +3,7 @@
 -- Animated gradient border, spring toggles,
 -- ripple buttons, HSV color picker, overlay dropdowns, key system.
 -- API giu tuong thich v1.3: CreateWindow / CreateTab / Create*.
+-- Intro luon hien (co key hay khong). Tat bang Intro = false.
 -- ============================================================
 
 local Players          = game:GetService("Players")
@@ -333,8 +334,9 @@ end
 -- ============================================================
 -- KEY PROMPT: intro fall + burst -> loading -> key box
 -- done(success: boolean) is called exactly once.
+-- introOnly = true: chay intro + loading roi tat, khong hien o key.
 -- ============================================================
-local function showKeyPrompt(ks, valid, done)
+local function showKeyPrompt(ks, valid, done, introOnly)
     local alive, finished = true, false
     local gui = new("ScreenGui", {
         Name = "RYZE_UI_Key", ResetOnSpawn = false, IgnoreGuiInset = true,
@@ -683,7 +685,9 @@ local function showKeyPrompt(ks, valid, done)
 
         local phases = {
             { "Loading UI...", 0.20, 0.35 }, { "Loading features...", 0.45, 0.45 },
-            { "Loading modules...", 0.68, 0.45 }, { "Preparing key check...", 0.88, 0.45 }, { "Ready", 1, 0.3 },
+            { "Loading modules...", 0.68, 0.45 },
+            { introOnly and "Almost there..." or "Preparing key check...", 0.88, 0.45 },
+            { "Ready", 1, 0.3 },
         }
         for _, ph in ipairs(phases) do
             phase.Text = ph[1]
@@ -719,6 +723,18 @@ local function showKeyPrompt(ks, valid, done)
         if not sleep(0.45) then return end
         holder:Destroy()
         load:Destroy()
+
+        -- che do chi intro: khong hien o key, tat luon
+        if introOnly then
+            finished = true
+            alive = false
+            tween(bg, 0.3, { BackgroundTransparency = 1 })
+            tween(wash, 0.3, { BackgroundTransparency = 1 })
+            task.wait(0.32)
+            gui:Destroy()
+            done(true)
+            return
+        end
 
         box.Visible = true
         tween(box, 0.6, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Back)
@@ -1818,34 +1834,57 @@ end
 
 -- ============================================================
 -- PUBLIC: CreateWindow
--- With KeySystem=true this call YIELDS until the key is accepted and
--- returns the real window (nil if the prompt was closed).
+-- Intro luon hien (tat bang Intro = false).
+--  * Can nhap key  : intro -> loading -> o key -> cua so
+--  * Khong can key : intro -> loading -> cua so
+--    (tat KeySystem / khong co key hop le / da luu key dung)
+-- Ham nay YIELD cho den khi xong va tra ve cua so
+-- (nil neu nguoi dung dong o key).
 -- ============================================================
 function Lib:CreateWindow(cfg)
     cfg = cfg or {}
+    applyTheme(cfg)
+
     local function build()
         local w = self:_CreateWindowCore(cfg)
         if type(cfg.OnKeySuccess) == "function" then task.spawn(cfg.OnKeySuccess, w) end
         return w
     end
 
-    if cfg.KeySystem ~= true then return build() end
-
-    applyTheme(cfg)
     local ks = cfg.KeySettings or {}
-    local valid = buildValidKeys(ks)
-    if #valid == 0 then
-        warn("[RYZE UI] KeySystem is on but no valid keys were found. Skipping check.")
+    local needKey = cfg.KeySystem == true
+    local valid = {}
+
+    if needKey then
+        valid = buildValidKeys(ks)
+        if #valid == 0 then
+            warn("[RYZE UI] KeySystem is on but no valid keys were found. Skipping check.")
+            needKey = false
+        end
+    end
+
+    if needKey then
+        local saved = (ks.SaveKey ~= false) and loadSavedKey(ks.FileName) or nil
+        if saved and checkKey(saved, valid) then needKey = false end
+    end
+
+    -- can nhap key: intro -> loading -> o key
+    if needKey then
+        local result, finished = false, false
+        showKeyPrompt(ks, valid, function(ok) result = ok; finished = true end)
+        while not finished do task.wait(0.1) end
+        if not result then return nil end
         return build()
     end
 
-    local saved = (ks.SaveKey ~= false) and loadSavedKey(ks.FileName) or nil
-    if saved and checkKey(saved, valid) then return build() end
+    -- khong can key: van chay intro
+    if cfg.Intro ~= false then
+        local finished = false
+        local introCfg = { Title = ks.Title or cfg.Title }
+        showKeyPrompt(introCfg, {}, function() finished = true end, true)
+        while not finished do task.wait(0.1) end
+    end
 
-    local result, finished = false, false
-    showKeyPrompt(ks, valid, function(ok) result = ok; finished = true end)
-    while not finished do task.wait(0.1) end
-    if not result then return nil end
     return build()
 end
 
