@@ -203,14 +203,42 @@ function Lib:Notify(cfg)
     local glyphs = { info = "i", success = "+", warning = "!", error = "x" }
     local color = colors[ntype] or colors.info
 
+    local CARD_W  = 320
+    local PAD_L, PAD_R = 52, 14
+    local descW = CARD_W - PAD_L - PAD_R
+
+    -- do chu chinh xac bang GetTextBoundsAsync, khong dung AutomaticSize long nhau
+    local descH = 0
+    if desc ~= "" then
+        local ok, bounds = pcall(function()
+            local params = Instance.new("GetTextBoundsParams")
+            params.Text = desc
+            params.Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
+            params.Size = 11
+            params.Width = descW
+            return TextService:GetTextBoundsAsync(params)
+        end)
+        if ok and bounds then
+            descH = math.ceil(bounds.Y) + 2
+        else
+            local ok2, size2 = pcall(function()
+                return TextService:GetTextSize(desc, 11, Enum.Font.GothamMedium, Vector2.new(descW, 2000))
+            end)
+            descH = ok2 and math.ceil(size2.Y) + 2 or 28
+        end
+    end
+
+    local TOP_PAD, BOTTOM_PAD, TITLE_H, GAP = 10, 14, 18, 2
+    local H = TOP_PAD + TITLE_H + (desc ~= "" and (GAP + descH) or 0) + BOTTOM_PAD
+    H = math.max(H, 56)
+
     notifyOrder -= 1
     local wrap = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundTransparency = 1, LayoutOrder = notifyOrder, Parent = notifyHolder,
+        Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1,
+        LayoutOrder = notifyOrder, Parent = notifyHolder,
     })
     local card = new("TextButton", {
-        Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        Position = UDim2.new(1, 80, 0, 0),
+        Size = UDim2.new(1, 0, 0, H), Position = UDim2.new(1, 80, 0, 0),
         BackgroundColor3 = WHITE, BorderSizePixel = 0, Text = "", AutoButtonColor = false,
         ClipsDescendants = true, Parent = wrap,
     })
@@ -256,17 +284,6 @@ function Lib:Notify(cfg)
         Parent = glow,
     })
 
-    -- noi dung: content frame tu dong gian theo chu, card bam theo content
-    local content = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundTransparency = 1, Parent = card,
-    })
-    new("UIPadding", {
-        PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 12),
-        PaddingLeft = UDim.new(0, 52), PaddingRight = UDim.new(0, 12), Parent = content,
-    })
-    new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = content })
-
     -- badge icon gradient
     local badge = new("Frame", {
         Size = UDim2.fromOffset(30, 30), Position = UDim2.new(0, 12, 0, 10),
@@ -280,21 +297,19 @@ function Lib:Notify(cfg)
     })
 
     new("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1,
-        Text = title, TextColor3 = P.TEXT, Font = Enum.Font.GothamBold, TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
-        LayoutOrder = 1, Parent = content,
+        Size = UDim2.new(1, -(PAD_L + PAD_R), 0, TITLE_H), Position = UDim2.new(0, PAD_L, 0, TOP_PAD),
+        BackgroundTransparency = 1, Text = title, TextColor3 = P.TEXT, Font = Enum.Font.GothamBold, TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card,
     })
     if desc ~= "" then
         new("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
-            Text = desc, TextColor3 = P.MUTED, Font = Enum.Font.GothamMedium, TextSize = 11,
+            Size = UDim2.new(1, -(PAD_L + PAD_R), 0, descH),
+            Position = UDim2.new(0, PAD_L, 0, TOP_PAD + TITLE_H + GAP),
+            BackgroundTransparency = 1, Text = desc, TextColor3 = P.MUTED, Font = Enum.Font.GothamMedium, TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
-            TextWrapped = true, LayoutOrder = 2, Parent = content,
+            TextWrapped = true, Parent = card,
         })
     end
-    -- khoang trong de khong de progress bar de len chu cuoi
-    new("Frame", { Size = UDim2.new(1, 0, 0, 4), BackgroundTransparency = 1, LayoutOrder = 99, Parent = content })
 
     -- progress bar gradient
     local track = new("Frame", {
@@ -320,9 +335,6 @@ function Lib:Notify(cfg)
         tween(cardScale, 0.3, { Scale = 0.92 })
         task.delay(0.28, function()
             if not wrap.Parent then return end
-            local h = wrap.AbsoluteSize.Y
-            wrap.AutomaticSize = Enum.AutomaticSize.None
-            wrap.Size = UDim2.new(1, 0, 0, h)
             tween(wrap, 0.22, { Size = UDim2.new(1, 0, 0, 0) })
             Debris:AddItem(wrap, 0.3)
         end)
@@ -338,7 +350,8 @@ function Lib:Notify(cfg)
     card.MouseEnter:Connect(function() tween(border, 0.15, { Transparency = 0 }) end)
     card.MouseLeave:Connect(function() tween(border, 0.15, { Transparency = 0.2 }) end)
 
-    -- animation vao
+    -- animation vao: wrap nhay dung H ngay tu dau, khong doi AutomaticSize tinh
+    tween(wrap, 0.25, { Size = UDim2.new(1, 0, 0, H) })
     tween(card, 0.5, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Back)
     tween(cardScale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
     tween(bar, duration, { Size = UDim2.new(0, 0, 1, 0) }, Enum.EasingStyle.Linear)
