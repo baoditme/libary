@@ -162,19 +162,26 @@ Lib.Version = "2.0"
 
 -- ============================================================
 -- NOTIFY
+-- Viền gradient xoay giống UI chính, nền gradient, progress bar gradient.
+-- Bấm vào card để tắt. Tối đa MAX_STACK thông báo cùng lúc.
 -- ============================================================
+local TextService = game:GetService("TextService")
+
 local notifyGui, notifyHolder
 local notifyOrder = 0
+local activeNotifs = {}
+local MAX_STACK = 5
 
 local function ensureNotify()
     if notifyGui and notifyGui.Parent then return end
+    table.clear(activeNotifs)
     notifyGui = new("ScreenGui", {
         Name = "RYZE_UI_Notify", ResetOnSpawn = false, IgnoreGuiInset = true,
         DisplayOrder = 1000, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
     })
     mount(notifyGui)
     notifyHolder = new("Frame", {
-        Size = UDim2.new(0, 320, 1, -24), Position = UDim2.new(1, -332, 0, 14),
+        Size = UDim2.new(0, 320, 1, -24), Position = UDim2.new(1, -334, 0, 14),
         BackgroundTransparency = 1, Parent = notifyGui,
     })
     new("UIListLayout", {
@@ -186,74 +193,148 @@ end
 function Lib:Notify(cfg)
     cfg = cfg or {}
     ensureNotify()
+
     local title    = tostring(cfg.Title or "Notification")
     local desc     = tostring(cfg.Desc or "")
     local ntype    = cfg.Type or "info"
-    local duration = cfg.Duration or 3.5
+    local duration = math.max(tonumber(cfg.Duration) or 3.5, 0.5)
+
     local colors = { info = P.ACCENT, success = P.SUCCESS, warning = P.WARNING, error = P.DANGER }
     local glyphs = { info = "i", success = "+", warning = "!", error = "x" }
     local color = colors[ntype] or colors.info
-    local H = 68
+
+    -- chieu cao theo noi dung
+    local descW = 320 - 62
+    local descH = 0
+    if desc ~= "" then
+        local ok, size = pcall(function()
+            return TextService:GetTextSize(desc, 11, Enum.Font.GothamMedium, Vector2.new(descW, 1000))
+        end)
+        descH = ok and size.Y or 28
+    end
+    local H = math.max(56, 32 + descH + 14)
 
     notifyOrder -= 1
     local wrap = new("Frame", {
         Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1,
         LayoutOrder = notifyOrder, Parent = notifyHolder,
     })
-    local card = new("Frame", {
-        Size = UDim2.new(1, 0, 0, H), Position = UDim2.new(1, 60, 0, 0),
-        BackgroundColor3 = Color3.fromRGB(18, 18, 24), BorderSizePixel = 0,
+    local card = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, H), Position = UDim2.new(1, 80, 0, 0),
+        BackgroundColor3 = WHITE, BorderSizePixel = 0, Text = "", AutoButtonColor = false,
         ClipsDescendants = true, Parent = wrap,
     })
-    addCorner(card, 10)
-    addStroke(card, color, 1, 0.75)
+    addCorner(card, 12)
+    local cardScale = new("UIScale", { Scale = 0.92, Parent = card })
 
+    -- nen gradient (toi o duoi, tint nhe theo mau loai o goc tren)
+    new("UIGradient", {
+        Rotation = 115,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, P.PANEL:Lerp(color, 0.14)),
+            ColorSequenceKeypoint.new(0.55, P.BG),
+            ColorSequenceKeypoint.new(1, P.BG:Lerp(P.ACCENT2, 0.08)),
+        }),
+        Parent = card,
+    })
+
+    -- vien gradient xoay (giong UI chinh)
+    local border = addStroke(card, WHITE, 1.5, 0.2)
+    local borderGrad = new("UIGradient", {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, color),
+            ColorSequenceKeypoint.new(0.35, P.BG),
+            ColorSequenceKeypoint.new(0.65, P.ACCENT2),
+            ColorSequenceKeypoint.new(1, color),
+        }),
+        Parent = border,
+    })
+    local spin
+    spin = RunService.Heartbeat:Connect(function(dt)
+        if not card.Parent then spin:Disconnect() return end
+        borderGrad.Rotation = (borderGrad.Rotation + dt * 60) % 360
+    end)
+
+    -- glow ben trai, mo dan sang phai
     local glow = new("Frame", {
-        Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = color,
-        BackgroundTransparency = 0.93, BorderSizePixel = 0, Parent = card,
+        Size = UDim2.new(0.7, 0, 1, 0), BackgroundColor3 = color, BackgroundTransparency = 0.88,
+        BorderSizePixel = 0, Parent = card,
     })
     new("UIGradient", {
         Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
         Parent = glow,
     })
 
+    -- badge icon gradient
     local badge = new("Frame", {
-        Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(12, 12),
-        BackgroundColor3 = color, BackgroundTransparency = 0.8, BorderSizePixel = 0, Parent = card,
+        Size = UDim2.fromOffset(30, 30), Position = UDim2.new(0, 12, 0.5, -15),
+        BackgroundColor3 = WHITE, BorderSizePixel = 0, Parent = card,
     })
-    addCorner(badge, 8)
+    addCorner(badge, 9)
+    new("UIGradient", { Rotation = 45, Color = ColorSequence.new(color, color:Lerp(P.ACCENT2, 0.55)), Parent = badge })
     new("TextLabel", {
         Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = glyphs[ntype] or "i",
-        TextColor3 = color, Font = Enum.Font.GothamBlack, TextSize = 15, Parent = badge,
+        TextColor3 = WHITE, Font = Enum.Font.GothamBlack, TextSize = 15, Parent = badge,
     })
+
     new("TextLabel", {
         Size = UDim2.new(1, -62, 0, 18), Position = UDim2.fromOffset(52, 10), BackgroundTransparency = 1,
         Text = title, TextColor3 = P.TEXT, Font = Enum.Font.GothamBold, TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card,
     })
-    new("TextLabel", {
-        Size = UDim2.new(1, -62, 0, 28), Position = UDim2.fromOffset(52, 28), BackgroundTransparency = 1,
-        Text = desc, TextColor3 = P.MUTED, Font = Enum.Font.GothamMedium, TextSize = 11,
-        TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
-        TextWrapped = true, Parent = card,
+    if desc ~= "" then
+        new("TextLabel", {
+            Size = UDim2.new(1, -62, 0, descH), Position = UDim2.fromOffset(52, 30), BackgroundTransparency = 1,
+            Text = desc, TextColor3 = P.MUTED, Font = Enum.Font.GothamMedium, TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+            TextWrapped = true, Parent = card,
+        })
+    end
+
+    -- progress bar gradient
+    local track = new("Frame", {
+        Size = UDim2.new(1, 0, 0, 3), Position = UDim2.new(0, 0, 1, -3),
+        BackgroundColor3 = WHITE, BackgroundTransparency = 0.93, BorderSizePixel = 0, Parent = card,
     })
     local bar = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 2), Position = UDim2.new(0, 0, 1, -2),
-        BackgroundColor3 = color, BorderSizePixel = 0, Parent = card,
+        Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0, Parent = track,
     })
+    new("UIGradient", { Color = ColorSequence.new(color, P.ACCENT2), Parent = bar })
 
-    tween(wrap, 0.25, { Size = UDim2.new(1, 0, 0, H) })
-    tween(card, 0.45, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Back)
-    tween(bar, duration, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
-
-    task.delay(duration, function()
+    -- dismiss (chi chay 1 lan)
+    local dead = false
+    local function dismiss()
+        if dead then return end
+        dead = true
+        local idx = table.find(activeNotifs, dismiss)
+        if idx then table.remove(activeNotifs, idx) end
         if not card.Parent then return end
-        tween(card, 0.3, { Position = UDim2.new(1, 60, 0, 0) }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        task.wait(0.28)
-        if not wrap.Parent then return end
-        tween(wrap, 0.22, { Size = UDim2.new(1, 0, 0, 0) })
-        Debris:AddItem(wrap, 0.3)
-    end)
+        tween(card, 0.3, { Position = UDim2.new(1, 80, 0, 0) }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+        tween(cardScale, 0.3, { Scale = 0.92 })
+        task.delay(0.28, function()
+            if not wrap.Parent then return end
+            tween(wrap, 0.22, { Size = UDim2.new(1, 0, 0, 0) })
+            Debris:AddItem(wrap, 0.3)
+        end)
+    end
+
+    table.insert(activeNotifs, dismiss)
+    if #activeNotifs > MAX_STACK then
+        local oldest = table.remove(activeNotifs, 1)
+        if oldest then task.spawn(oldest) end
+    end
+
+    card.MouseButton1Click:Connect(dismiss)
+    card.MouseEnter:Connect(function() tween(border, 0.15, { Transparency = 0 }) end)
+    card.MouseLeave:Connect(function() tween(border, 0.15, { Transparency = 0.2 }) end)
+
+    -- animation vao
+    tween(wrap, 0.25, { Size = UDim2.new(1, 0, 0, H) })
+    tween(card, 0.5, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Back)
+    tween(cardScale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+    tween(bar, duration, { Size = UDim2.new(0, 0, 1, 0) }, Enum.EasingStyle.Linear)
+
+    task.delay(duration, dismiss)
 end
 
 -- ============================================================
