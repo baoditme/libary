@@ -291,14 +291,16 @@ function Lib:Notify(cfg)
         })
     end
 
-    -- progress bar gradient
+        -- progress bar gradient (thụt vào trong, bo tròn, không lòi góc)
     local track = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 3), Position = UDim2.new(0, 0, 1, -3),
-        BackgroundColor3 = WHITE, BackgroundTransparency = 0.93, BorderSizePixel = 0, Parent = card,
+        Size = UDim2.new(1, -24, 0, 3), Position = UDim2.new(0, 12, 1, -8),
+        BackgroundColor3 = WHITE, BackgroundTransparency = 0.92, BorderSizePixel = 0, Parent = card,
     })
+    addCorner(track, 100)
     local bar = new("Frame", {
         Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0, Parent = track,
     })
+    addCorner(bar, 100)
     new("UIGradient", { Color = ColorSequence.new(color, P.ACCENT2), Parent = bar })
 
     -- dismiss (chi chay 1 lan)
